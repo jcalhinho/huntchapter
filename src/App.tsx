@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
+import type { Transition } from 'framer-motion';
 import LoadingGlyph from './components/LoadingGlyph';
 import MagicButton from './components/MagicButton';
 import Field from './components/Field';
@@ -11,7 +12,7 @@ const cardVariants = {
   animate: { opacity: 1, y: 0, scale: 1, rotateX: 0, filter: 'blur(0px)' as any },
   exit:    { opacity: 0, y: -40, scale: 0.96, rotateX: -6, filter: 'blur(8px)' as any },
 };
-const cardTransition = { type: 'spring', stiffness: 120, damping: 18, mass: 0.9 };
+const cardTransition: Transition = { type: 'spring', stiffness: 120, damping: 18, mass: 0.9 };
 
 export default function App() {
   const {
