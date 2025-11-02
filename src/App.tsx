@@ -26,16 +26,16 @@ export default function App() {
     <div style={page}>
       <div style={rightPane}>
         <div style={topbar}>
-          <div>StoryRunner</div>
-          <div style={{ opacity: 0.7, fontSize: 12 }}>IA Adventure · Framer Motion</div>
+          <div>HuntChapter</div>
+          <div style={{ opacity: 0.7, fontSize: 12 }}></div>
         </div>
 
         <div style={{ position: 'relative', flex: 1, display: 'grid', placeItems: 'center' }}>
           <AnimatePresence mode="wait">
             {!started ? (
               <motion.div key="intro" variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, transformPerspective: 1000 }}>
-                <h2 style={{ margin: '0 0 8px 0' }}>Un jeu dont tu es le héros</h2>
-                <p style={{ opacity: 0.85, marginTop: 0 }}>Choisis 4 paramètres… puis l’IA lance l’aventure. Que des boutons, aucune saisie.</p>
+                <h2 style={{ margin: '0 0 8px 0' }}></h2>
+                {/* <p style={{ opacity: 0.85, marginTop: 0 }}>Choisis 4 paramètres… puis l’IA lance l’aventure. Que des boutons, aucune saisie.</p> */}
                 <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
                   <Field label="Genre"><Options current={genre} setCurrent={setGenre} items={['Fantasy','Science-fiction','Enquête','Survie','Historique']} /></Field>
                   <Field label="Ton"><Options current={ton} setCurrent={setTon} items={['Épique','Sombre','Léger','Mystérieux']} /></Field>
@@ -45,7 +45,7 @@ export default function App() {
                 <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
                   <button style={btnPrimary} onClick={startGame} disabled={loading}>{loading ? 'Initialisation…' : 'Démarrer l’aventure'}</button>
                 </div>
-                <p style={{ opacity: 0.6, marginTop: 8, fontSize: 12 }}>Astuce: ajoute <code>VITE_GEMINI_API_KEY</code> dans <code>.env.local</code></p>
+               
                 {error && <p style={{ color: '#ffb3b3' }}>⚠️ {error}</p>}
               </motion.div>
             ) : (showPrologue ? (
@@ -124,8 +124,7 @@ export default function App() {
         </div>
 
         <div style={bottombar}>
-          <small style={{ opacity: 0.75 }}>Sécurité : contenu sensible filtré via prompt. Pour la prod, déplace l’appel LLM côté serveur · Image générée automatiquement.</small>
-        </div>
+           </div>
       </div>
     </div>
   );
