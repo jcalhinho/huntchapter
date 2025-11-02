@@ -9,6 +9,7 @@ export const PrologueSchema = z.object({
 export const SceneSchema = z.object({
   narration: z.string().min(10, "La narration doit être plus détaillée."),
   options: z.array(z.string()).length(3, "Il doit y avoir exactement 3 options."),
+  status: z.literal('ongoing'),
 });
 
 // Schema for a challenge scene
@@ -18,6 +19,7 @@ export const ChallengeSchema = z.object({
         question: z.string().min(5),
         choices: z.array(z.string()).min(2).max(4),
     }),
+    status: z.literal('ongoing'),
 });
 
 // Schema for an ending scene
