@@ -99,7 +99,7 @@ async function generateText<T extends z.ZodType<any, any>>(prompt: string, schem
 
 async function generateImage(prompt: string): Promise<string | undefined> {
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -109,10 +109,7 @@ async function generateImage(prompt: string): Promise<string | undefined> {
             { text: `Generate a high-quality, cinematic image that illustrates the following scene: ${prompt}` },
             { text: "Output a single part with the image's raw data, no JSON." }
           ]
-        }],
-        generationConfig: {
-          responseMimeType: "image/png"
-        }
+        }]
       }),
     });
 
