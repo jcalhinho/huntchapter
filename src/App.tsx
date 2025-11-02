@@ -39,9 +39,9 @@ export default function App() {
     <div style={page}>
       <div style={rightPane}>
         <div style={topbar}>
-          <div>StoryRunner</div>
+          <div>HuntChapter</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ opacity: 0.7, fontSize: 12 }}>IA Adventure · Framer Motion</div>
+            
             {started && <button style={{...btn, padding: '6px 10px'}} onClick={reset}>↺ Recommencer</button>}
           </div>
         </div>
@@ -50,7 +50,7 @@ export default function App() {
           <AnimatePresence mode="wait">
             {!started ? (
               <motion.div key="intro" variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, transformPerspective: 1000 }}>
-                <h2 style={{ margin: '0 0 8px 0' }}>Un jeu dont tu es le héros</h2>
+                
                 <p style={{ opacity: 0.85, marginTop: 0 }}>Choisis 4 paramètres… puis l’IA lance l’aventure. Que des boutons, aucune saisie.</p>
                 <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
                   <Field label="Genre"><Options current={genre} setCurrent={setGenre} items={['Fantasy','Science-fiction','Enquête','Survie','Historique']} /></Field>
@@ -115,7 +115,7 @@ export default function App() {
         </div>
 
         <div style={bottombar}>
-          <small style={{ opacity: 0.75 }}>Sécurité : l'état du jeu est maintenant géré côté serveur.</small>
+         
         </div>
       </div>
     </div>
