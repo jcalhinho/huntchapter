@@ -203,7 +203,7 @@ app.post('/api/game/:id/choice', async (req, res) => {
         game.history.push(userChoice);
 
         const context = game.history.map(s => s.narration).join('\n\n');
-        const nextScenePrompt = `Voici le contexte de l'histoire: ${JSON.stringify(game.params)}. Voici l'historique des événements: \n${context}\n\nGénère la prochaine scène. L'histoire doit continuer logiquement. Réponds uniquement avec un JSON respectant l'un de ces schemas: { "narration": "string", "options": ["choix1", "choix2", "choix3"] } OU { "narration": "string", "challenge": { "question": "string", "choices": ["c1", "c2"] } } OU { "narration": "string", "endingTitle": "string", "status": "win" | "loss" }.`;
+        const nextScenePrompt = `Voici le contexte de l'histoire: ${JSON.stringify(game.params)}. Voici l'historique des événements: \n${context}\n\nGénère la prochaine scène. L'histoire doit continuer logiquement. Réponds uniquement avec un JSON respectant l'un de ces schemas: { "narration": "string", "options": ["choix1", "choix2", "choix3"], "status": "ongoing" } OU { "narration": "string", "challenge": { "question": "string", "choices": ["c1", "c2"] }, "status": "ongoing" } OU { "narration": "string", "endingTitle": "string", "status": "win" | "loss" }.`;
 
         const nextSceneResult = await generateText(nextScenePrompt, AnySceneSchema);
 
