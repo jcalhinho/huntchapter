@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import dotenv from 'dotenv';
+
 import crypto from 'crypto';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
@@ -10,6 +12,7 @@ import { PrologueSchema, SceneSchema, AnySceneSchema } from './schemas.js';
 // ES module-safe way to get __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+dotenv.config({ path: 'api/.env' });
 const GAMES_FILE_PATH = path.join(__dirname, 'games.json');
 
 // --- TYPES ---

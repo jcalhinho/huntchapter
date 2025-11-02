@@ -73,9 +73,16 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   goBack: () => {
-    set(state => ({
-      activeSceneIndex: Math.max(0, state.activeSceneIndex - 1)
-    }));
+    set(state => {
+      // Find the index of the last "real" scene (not a user choice entry)
+      const previousSceneIndex = state.history
+        .slice(0, state.activeSceneIndex)
+        .findLastIndex(scene => !scene.id.startsWith('user-'));
+
+      return {
+        activeSceneIndex: previousSceneIndex >= 0 ? previousSceneIndex : 0
+      };
+    });
   },
 
   reset: () => {

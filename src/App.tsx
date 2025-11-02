@@ -3,8 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import type { Transition } from 'framer-motion';
 import LoadingGlyph from './components/LoadingGlyph';
 import MagicButton from './components/MagicButton';
-import Field from './components/Field';
-import Options from './components/Options';
+import WordCloud from './components/WordCloud';
 import { useGameStore } from './state/gameStore';
 import { page, rightPane, topbar, bottombar, card, btn, btnPrimary } from './styles/ui';
 
@@ -16,12 +15,6 @@ const cardVariants = {
 const cardTransition: Transition = { type: 'spring', stiffness: 120, damping: 18, mass: 0.9 };
 
 export default function App() {
-  // Local state for setup screen, not needed in global store
-  const [genre, setGenre] = useState('Fantasy');
-  const [ton, setTon] = useState('Épique');
-  const [pov, setPov] = useState<'je' | 'tu'>('tu');
-  const [cadre, setCadre] = useState('Monde original');
-
   // Zustand store for all game-related state
   const {
     started, loading, error,
@@ -31,8 +24,14 @@ export default function App() {
 
   const activeScene = history[activeSceneIndex];
 
-  const handleStartGame = () => {
-    startGame({ genre, ton, pov, cadre });
+  const handleStartGame = (words: string[]) => {
+    const storyPrompt = words.join(', ');
+    startGame({
+      genre: 'Aventure', // Default or derived from words
+      ton: 'Mystérieux',   // Default or derived from words
+      pov: 'tu',           // Default setting
+      cadre: storyPrompt,
+    });
   };
 
   return (
@@ -49,19 +48,11 @@ export default function App() {
         <div style={{ position: 'relative', flex: 1, display: 'grid', placeItems: 'center' }}>
           <AnimatePresence mode="wait">
             {!started ? (
-              <motion.div key="intro" variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, transformPerspective: 1000 }}>
-                
-                <p style={{ opacity: 0.85, marginTop: 0 }}>Choisis 4 paramètres… puis l’IA lance l’aventure. Que des boutons, aucune saisie.</p>
-                <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
-                  <Field label="Genre"><Options current={genre} setCurrent={setGenre} items={['Fantasy','Science-fiction','Enquête','Survie','Historique']} /></Field>
-                  <Field label="Ton"><Options current={ton} setCurrent={setTon} items={['Épique','Sombre','Léger','Mystérieux']} /></Field>
-                  <Field label="Point de vue"><Options current={pov} setCurrent={setPov} items={['tu','je']} /></Field>
-                  <Field label="Cadre"><Options current={cadre} setCurrent={setCadre} items={['Monde original','Ville moderne','Espace lointain','Médiéval','Post-apo']} /></Field>
-                </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                  <button style={btnPrimary} onClick={handleStartGame} disabled={loading}>{loading ? 'Initialisation…' : 'Démarrer l’aventure'}</button>
-                </div>
-                {error && <p style={{ color: '#ffb3b3' }}>⚠️ {error}</p>}
+              <motion.div key="intro" variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, width: '100%', maxWidth: '800px', transformPerspective: 1000 }}>
+                <h1 style={{ textAlign: 'center', margin: 0, fontWeight: 700 }}>Créez votre histoire</h1>
+                <p style={{ opacity: 0.85, textAlign: 'center', marginTop: 8, marginBottom: 20 }}>Choisissez 6 mots pour forger votre destin.</p>
+                <WordCloud onSubmit={handleStartGame} loading={loading} />
+                {error && <p style={{ color: '#ffb3b3', textAlign: 'center' }}>⚠️ {error}</p>}
               </motion.div>
             ) : (
               <motion.div key={activeScene?.id || 'scene'} variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, transformPerspective: 1000 }}>
