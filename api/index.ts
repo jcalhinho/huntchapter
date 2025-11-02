@@ -210,7 +210,7 @@ app.post('/api/game/:id/choice', async (req, res) => {
 
         const nextSceneResult = await generateText(nextScenePrompt, AnySceneSchema);
 
-        const imagePrompt = `Style: ${game.params.ton}, ${game.params.genre}. Scene: ${nextSceneResult.narration.substring(0, 300)}`;
+        const imagePrompt = `Style: ${game.params.ton}, ${game.params.genre}. Scene: ${nextSceneResult.narration.substring(0, 200)}`;
         const imageUrl = await generateImage(imagePrompt);
 
         const newScene: Scene = {
