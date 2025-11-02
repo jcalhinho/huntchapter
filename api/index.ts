@@ -123,10 +123,11 @@ async function generateImage(prompt: string): Promise<string | undefined> {
     }
 
     const data = (await response.json()) as GeminiImageResponse;
+    console.log('[generateImage] Full Gemini Response:', JSON.stringify(data, null, 2));
     const base64 = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
 
     if (!base64) {
-      console.error("No image data found in Gemini's response");
+      console.error("No image data found in Gemini's response. Full response logged above.");
       return undefined;
     }
 
@@ -184,6 +185,7 @@ app.post('/api/game', async (req, res) => {
     games.set(gameId, newGame);
     await saveGames();
 
+    console.log('[POST /api/game] Sending first scene:', JSON.stringify(firstScene, null, 2));
     res.status(201).json({ gameId, prologue: firstScene });
 
   } catch (e) {
@@ -224,6 +226,7 @@ app.post('/api/game/:id/choice', async (req, res) => {
         games.set(gameId, game);
         await saveGames();
 
+        console.log(`[POST /api/game/${gameId}/choice] Sending new scene:`, JSON.stringify(newScene, null, 2));
         res.status(200).json(newScene);
 
     } catch (e) {
