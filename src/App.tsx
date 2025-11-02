@@ -25,11 +25,13 @@ export default function App() {
   const activeScene = history[activeSceneIndex];
 
   const handleStartGame = (words: string[]) => {
-    const storyPrompt = words.join(', ');
+    // Les mots choisis par l'utilisateur deviennent le cadre de l'histoire.
+    // Le genre et le ton peuvent être fixés ou dérivés plus tard.
+    const storyPrompt = `Une histoire basée sur les concepts suivants : ${words.join(', ')}.`;
     startGame({
-      genre: 'Aventure', // Default or derived from words
-      ton: 'Mystérieux',   // Default or derived from words
-      pov: 'tu',           // Default setting
+      genre: 'Création du joueur',
+      ton: 'Inattendu',
+      pov: 'tu',
       cadre: storyPrompt,
     });
   };
@@ -50,7 +52,8 @@ export default function App() {
             {!started ? (
               <motion.div key="intro" variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, width: '100%', maxWidth: '800px', transformPerspective: 1000 }}>
                 <h1 style={{ textAlign: 'center', margin: 0, fontWeight: 700 }}>Créez votre histoire</h1>
-                <p style={{ opacity: 0.85, textAlign: 'center', marginTop: 8, marginBottom: 20 }}>Choisissez 6 mots pour forger votre destin.</p>
+                <p style={{ opacity: 0.85, textAlign: 'center', marginTop: 8, marginBottom: 20 }}>Cliquez sur 6 mots dans le nuage pour commencer.</p>
+                {/* Le nouveau composant WordCloud sera inséré ici */}
                 <WordCloud onSubmit={handleStartGame} loading={loading} />
                 {error && <p style={{ color: '#ffb3b3', textAlign: 'center' }}>⚠️ {error}</p>}
               </motion.div>

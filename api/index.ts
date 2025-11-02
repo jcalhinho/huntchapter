@@ -55,6 +55,12 @@ async function loadGames() {
 // --- GEMINI API HELPERS ---
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
+if (!GEMINI_API_KEY) {
+  console.error("Erreur: La variable d'environnement GEMINI_API_KEY n'est pas définie.");
+  console.error("Veuillez créer un fichier .env dans le dossier 'api' et y ajouter votre clé.");
+  process.exit(1);
+}
+
 async function generateText<T extends z.ZodType<any, any>>(prompt: string, schema: T, maxRetries = 2): Promise<z.infer<T>> {
   let lastError: any = null;
   for (let i = 0; i < maxRetries; i++) {
@@ -142,7 +148,7 @@ async function generateImage(prompt: string): Promise<string | undefined> {
 
 // --- EXPRESS APP ---
 const app = express();
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 8090;
 app.use(cors());
 app.use(express.json());
 

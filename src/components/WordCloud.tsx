@@ -1,124 +1,141 @@
-
-import { useState, useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { Text } from '@react-three/drei';
-import { motion } from 'framer-motion';
+import { useState, useMemo, useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { Text, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
+import { motion, AnimatePresence } from 'framer-motion';
+import MagicButton from './MagicButton';
 
-// --- STYLES ---
-const btnPrimary = {
-  fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-  fontSize: 16,
-  fontWeight: 600,
-  color: '#0d1117',
-  background: '#f0f6fc',
-  border: '1px solid #d0d7de',
-  borderRadius: 8,
-  padding: '10px 18px',
-  cursor: 'pointer',
-  transition: 'all 0.2s',
-  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-  outline: 'none',
-};
-
-// --- COMPONENT PROPS ---
-interface WordCloudProps {
-  onSubmit: (words: string[]) => void;
-  loading: boolean;
-}
+// --- CONFIGURATION ---
+const wordsList = [
+  'Forêt', 'Château', 'Dragon', 'Magie', 'Trésor', 'Quête', 'Princesse', 'Chevalier', 'Épée',
+  'Mystère', 'Nuit', 'Étoiles', 'Lune', 'Ombre', 'Secret', 'Destin', 'Courage', 'Peur',
+  'Amour', 'Haine', 'Vengeance', 'Alliance', 'Trahison', 'Prophétie', 'Ancien', 'Artefact',
+  'Créature', 'Royaume', 'Guerre', 'Paix', 'Honneur', 'Gloire', 'Ruines', 'Savoir', 'Pouvoir',
+  'Voyage', 'Temps', 'Portail', 'Île', 'Désert', 'Montagne', 'Océan', 'Rivière', 'Cité',
+  'Légende', 'Mythe', 'Héros', 'Monstre', 'Dieu', 'Esprit'
+];
+const wordCount = 50;
+const radius = 10; // Augmenté pour plus d'espacement
+const fontSize = 0.55; // Légèrement réduit pour une meilleure lisibilité
+const font = '/fonts/Inter-Bold.woff';
 
 // --- 3D WORD COMPONENT ---
 function Word({ children, ...props }: any) {
-  const [hovered, setHovered] = useState(false);
   const color = new THREE.Color();
-  const fontProps = { fontSize: 2.5, letterSpacing: -0.05, lineHeight: 1, 'material-toneMapped': false }
+  const ref = useRef<any>();
+  const [hovered, setHovered] = useState(false);
+  const over = (e: any) => { e.stopPropagation(); setHovered(true); };
+  const out = () => setHovered(false);
+
+  useFrame(({ camera }) => {
+    if (ref.current) {
+      ref.current.quaternion.copy(camera.quaternion);
+      ref.current.material.color.lerp(color.set(hovered ? '#61dafb' : 'white'), 0.1);
+    }
+  });
+
+  return <Text ref={ref} onPointerOver={over} onPointerOut={out} {...props} font={font} fontSize={fontSize} letterSpacing={-0.05}>{children}</Text>;
+}
+
+// --- 3D CLOUD COMPONENT ---
+function Cloud({ count, radius, onWordClick }: { count: number, radius: number, onWordClick: (word: string) => void }) {
+  const words = useMemo(() => {
+    const temp = [];
+    const spherical = new THREE.Spherical();
+    const phiSpan = Math.PI / (count + 1);
+    const thetaSpan = (Math.PI * 2) / count;
+    for (let i = 1; i < count + 1; i++) {
+      for (let j = 0; j < count; j++) {
+        const phi = phiSpan * i;
+        const theta = thetaSpan * j;
+        const word = wordsList[Math.floor(Math.random() * wordsList.length)];
+        temp.push([new THREE.Vector3().setFromSpherical(spherical.set(radius, phi, theta)), word]);
+      }
+    }
+    return temp.slice(0, count);
+  }, [count, radius]);
 
   return (
-    <Text
-      onPointerOver={() => setHovered(true)}
-      onPointerOut={() => setHovered(false)}
-      {...props}
-      {...fontProps}
-    >
-      {children}
-      <meshPhongMaterial attach="material" color={hovered ? 'red' : 'white'} />
-    </Text>
+    <>
+      {words.map(([pos, word], index) => (
+        <Word key={index} position={pos as any} onClick={() => onWordClick(word as string)}>
+          {word as string}
+        </Word>
+      ))}
+    </>
   );
 }
 
-// --- MAIN WORD CLOUD COMPONENT ---
-export default function WordCloud({ onSubmit, loading }: WordCloudProps) {
+// --- MAIN COMPONENT ---
+export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: string[]) => void, loading: boolean }) {
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
-
-  const words = useMemo(() => [
-    // List of 50 words
-    'Dragon', 'Cyberpunk', 'Mystère', 'Forêt', 'Amour', 'Guerre', 'Magie', 'Espace', 'Futur', 'Passé',
-    'Enquête', 'Crime', 'Complot', 'Roi', 'Reine', 'Héro', 'Anti-héro', 'Quête', 'Artefact', 'Destin',
-    'Voyage', 'Découverte', 'Perte', 'Vengeance', 'Trahison', 'Alliance', 'Royaume', 'Empire', 'Rébellion', 'Liberté',
-    'Mort', 'Vie', 'Secret', 'Mensonge', 'Vérité', 'Honneur', 'Chaos', 'Ordre', 'Paix', 'Conflit',
-    'Monstre', 'Dieu', 'Démon', 'Ange', 'Prophétie', 'Rituel', 'Sacrifice', 'Espoir', 'Peur', 'Courage'
-  ], []);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleWordClick = (word: string) => {
-    if (selectedWords.includes(word)) {
-      setSelectedWords(selectedWords.filter(w => w !== word));
-    } else if (selectedWords.length < 6) {
-      setSelectedWords([...selectedWords, word]);
+    if (isSubmitting) return;
+    setSelectedWords(prev => {
+      if (prev.includes(word)) {
+        return prev.filter(w => w !== word);
+      }
+      if (prev.length < 6) {
+        return [...prev, word];
+      }
+      return prev;
+    });
+  };
+
+  const handleSubmit = () => {
+    if (selectedWords.length === 6 && !loading) {
+      setIsSubmitting(true);
+      // La prop "onAnimationComplete" de Framer Motion appellera onSubmit
     }
   };
 
-  const cloudRadius = 12;
-  const positions = useMemo(() => {
-    const temp = [];
-    const spherical = new THREE.Spherical();
-    for (let i = 0; i < words.length; i++) {
-      const phi = Math.acos(-1 + (2 * i) / words.length);
-      const theta = Math.sqrt(words.length * Math.PI) * phi;
-      const position = new THREE.Vector3().setFromSpherical(spherical.set(cloudRadius, phi, theta));
-      temp.push(position);
-    }
-    return temp;
-  }, [words.length]);
-
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-        <div style={{ width: '100%', height: '400px' }}>
-            <Canvas dpr={[1, 2]} camera={{ position: [0, 0, 35], fov: 90 }}>
-                <fog attach="fog" args={['#202025', 0, 80]} />
-                <ambientLight intensity={0.8} />
-                <pointLight position={[10, 10, 10]} />
-                <group position={[0, 0, 0]}>
-                    {words.map((word, i) => (
-                        <Word key={i} position={positions[i]} onClick={() => handleWordClick(word)}>
-                            {word}
-                        </Word>
-                    ))}
-                </group>
-            </Canvas>
-        </div>
-        <div style={{
-            width: '100%',
-            maxWidth: '600px',
-            minHeight: '80px',
-            border: '2px dashed #30363d',
-            borderRadius: 12,
-            padding: 10,
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 10,
-            alignItems: 'center',
-            justifyContent: 'center',
-        }}>
-            {selectedWords.map(word => <span key={word} style={{ background: '#1c2230', padding: '5px 10px', borderRadius: 6 }}>{word}</span>)}
-            {selectedWords.length === 0 && <span style={{ opacity: 0.5 }}>Choisissez 6 mots pour commencer</span>}
-        </div>
-        {selectedWords.length === 6 && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                <button style={btnPrimary} onClick={() => onSubmit(selectedWords)} disabled={loading}>
-                    {loading ? 'Création...' : 'Lancer l\'aventure'}
-                </button>
+    <motion.div
+      animate={{ opacity: isSubmitting ? 0 : 1 }}
+      transition={{ duration: 0.8, ease: "easeInOut" }}
+      onAnimationComplete={() => {
+        if (isSubmitting) {
+          onSubmit(selectedWords);
+        }
+      }}
+      style={{ width: '100%', height: '500px', position: 'relative', border: '1px solid #1c2230', background: '#0b0b0f', borderRadius: 12 }}
+    >
+      <Canvas dpr={[1, 2]} camera={{ position: [0, 0, 18], fov: 50 }}>
+        <fog attach="fog" args={['#0b0b0f', 0, 28]} />
+        <ambientLight intensity={0.6} />
+        <pointLight position={[10, 10, 15]} intensity={0.8} color="#88d1ff" />
+        <pointLight position={[-10, -10, -10]} intensity={0.5} color="#ff88c2" />
+        <Cloud count={wordCount} radius={radius} onWordClick={handleWordClick} />
+        <OrbitControls autoRotate autoRotateSpeed={0.2} enableZoom={false} enablePan={false} minPolarAngle={Math.PI / 2.2} maxPolarAngle={Math.PI / 2.2} />
+      </Canvas>
+      <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', minHeight: '30px' }}>
+          {selectedWords.map(word => (
+            <motion.div
+              key={word}
+              layout
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              style={{ padding: '4px 10px', background: '#1c2230', color: '#61dafb', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' }}
+              onClick={() => handleWordClick(word)}
+            >
+              {word}
             </motion.div>
-        )}
-    </div>
+          ))}
+        </div>
+        <AnimatePresence>
+          {selectedWords.length === 6 && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}>
+              <MagicButton onClick={handleSubmit} disabled={loading || isSubmitting}>
+                {loading ? 'Création...' : 'Forger le destin'}
+              </MagicButton>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
   );
 }
