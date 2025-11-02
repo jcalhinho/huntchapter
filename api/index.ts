@@ -56,7 +56,7 @@ async function generateText<T extends z.ZodType<any, any>>(prompt: string, schem
   let lastError: any = null;
   for (let i = 0; i < maxRetries; i++) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,18 +88,16 @@ async function generateText<T extends z.ZodType<any, any>>(prompt: string, schem
 
     } catch (error) {
       lastError = error;
-      const errorMessage = error instanceof Error ? error.message : JSON.stringify(error, null, 2);
-      console.warn(`Attempt ${i + 1} failed: ${errorMessage}. Retrying...`);
-      prompt = `${prompt}\n\nYour previous response was invalid. Please ensure your response is a valid JSON that strictly follows the requested schema. Error details: ${errorMessage}`;
+      console.warn(`Attempt ${i + 1} failed. Retrying...`);
+      prompt = `${prompt}\n\nYour previous response was invalid. Please ensure your response is a valid JSON that strictly follows the requested schema. Error details: ${JSON.stringify(lastError)}`;
     }
   }
-  const finalErrorMessage = lastError instanceof Error ? lastError.message : JSON.stringify(lastError, null, 2);
-  throw new Error(`Failed to get a valid response from Gemini after ${maxRetries} attempts. Last error: ${finalErrorMessage}`);
+  throw new Error(`Failed to get a valid response from Gemini after ${maxRetries} attempts. Last error: ${JSON.stringify(lastError)}`);
 }
 
 async function generateImage(prompt: string): Promise<string | undefined> {
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -109,7 +107,10 @@ async function generateImage(prompt: string): Promise<string | undefined> {
             { text: `Generate a high-quality, cinematic image that illustrates the following scene: ${prompt}` },
             { text: "Output a single part with the image's raw data, no JSON." }
           ]
-        }]
+        }],
+        generationConfig: {
+          responseMimeType: "image/png"
+        }
       }),
     });
 
@@ -120,11 +121,10 @@ async function generateImage(prompt: string): Promise<string | undefined> {
     }
 
     const data = (await response.json()) as GeminiImageResponse;
-    console.log('[generateImage] Full Gemini Response:', JSON.stringify(data, null, 2));
     const base64 = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
 
     if (!base64) {
-      console.error("No image data found in Gemini's response. Full response logged above.");
+      console.error("No image data found in Gemini's response");
       return undefined;
     }
 
@@ -157,21 +157,13 @@ app.post('/api/game', async (req, res) => {
     const gameParams = { genre, ton, pov, cadre };
 
     const prologuePrompt = `Génère le prologue d'une histoire interactive. Genre: ${genre}, Ton: ${ton}, Point de vue: ${pov}, Cadre: ${cadre}. Le prologue doit planter le décor et se terminer juste avant le premier choix du joueur. Réponds uniquement avec un JSON respectant ce schema: { "narration": "string" }`;
+
     const prologueResult = await generateText(prologuePrompt, PrologueSchema);
-
-    const firstChoicesPrompt = `Voici le début d'une histoire : ${prologueResult.narration}. Propose 3 options de suite pour le joueur. Réponds uniquement avec un JSON respectant ce schema: { "options": ["choix1", "choix2", "choix3"] }`;
-    const OptionsSchema = z.object({ options: z.array(z.string()).length(3) });
-    const firstChoicesResult = await generateText(firstChoicesPrompt, OptionsSchema);
-
-    const imagePrompt = `Style: ${gameParams.ton}, ${gameParams.genre}. Scene: ${prologueResult.narration.substring(0, 300)}`;
-    const imageUrl = await generateImage(imagePrompt);
 
     const firstScene: Scene = {
       id: crypto.randomUUID(),
-      img: imageUrl,
       status: 'ongoing',
-      narration: prologueResult.narration,
-      options: firstChoicesResult.options,
+      ...prologueResult
     };
 
     const newGame: GameSession = {
@@ -182,7 +174,6 @@ app.post('/api/game', async (req, res) => {
     games.set(gameId, newGame);
     await saveGames();
 
-    console.log('[POST /api/game] Sending first scene:', JSON.stringify(firstScene, null, 2));
     res.status(201).json({ gameId, prologue: firstScene });
 
   } catch (e) {
@@ -206,7 +197,7 @@ app.post('/api/game/:id/choice', async (req, res) => {
         game.history.push(userChoice);
 
         const context = game.history.map(s => s.narration).join('\n\n');
-        const nextScenePrompt = `Voici le contexte de l'histoire: ${JSON.stringify(game.params)}. Voici l'historique des événements: \n${context}\n\nGénère la prochaine scène. L'histoire doit continuer logiquement. Réponds uniquement avec un JSON respectant l'un de ces schemas: { "narration": "string", "options": ["choix1", "choix2", "choix3"], "status": "ongoing" } OU { "narration": "string", "challenge": { "question": "string", "choices": ["c1", "c2"] }, "status": "ongoing" } OU { "narration": "string", "endingTitle": "string", "status": "win" | "loss" }.`;
+        const nextScenePrompt = `Voici le contexte de l'histoire: ${JSON.stringify(game.params)}. Voici l'historique des événements: \n${context}\n\nGénère la prochaine scène. L'histoire doit continuer logiquement. Réponds uniquement avec un JSON respectant l'un de ces schemas: { "narration": "string", "options": ["choix1", "choix2", "choix3"] } OU { "narration": "string", "challenge": { "question": "string", "choices": ["c1", "c2"] } } OU { "narration": "string", "endingTitle": "string", "status": "win" | "loss" }.`;
 
         const nextSceneResult = await generateText(nextScenePrompt, AnySceneSchema);
 
@@ -223,7 +214,6 @@ app.post('/api/game/:id/choice', async (req, res) => {
         games.set(gameId, game);
         await saveGames();
 
-        console.log(`[POST /api/game/${gameId}/choice] Sending new scene:`, JSON.stringify(newScene, null, 2));
         res.status(200).json(newScene);
 
     } catch (e) {

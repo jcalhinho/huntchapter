@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "npm-run-all --parallel dev:frontend dev:backend",
+    "dev:frontend": "vite",
+    "dev:backend": "tsc -p tsconfig.node.json --watch & node --watch dist/api/index.js",
     "build": "vite build && tsc -p tsconfig.node.json",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -35,6 +37,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.22",
     "globals": "^16.4.0",
+    "npm-run-all": "^4.1.5",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.45.0",
     "vite": "^7.1.7"

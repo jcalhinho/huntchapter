@@ -26,7 +26,7 @@ export default function App() {
   const {
     started, loading, error,
     history, activeSceneIndex,
-    startGame, makeChoice, answerChallenge, reset,
+    startGame, makeChoice, answerChallenge, goBack, reset,
   } = useGameStore();
 
   const activeScene = history[activeSceneIndex];
@@ -40,7 +40,10 @@ export default function App() {
       <div style={rightPane}>
         <div style={topbar}>
           <div>StoryRunner</div>
-          <div style={{ opacity: 0.7, fontSize: 12 }}>IA Adventure · Framer Motion</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ opacity: 0.7, fontSize: 12 }}>IA Adventure · Framer Motion</div>
+            {started && <button style={{...btn, padding: '6px 10px'}} onClick={reset}>↺ Recommencer</button>}
+          </div>
         </div>
 
         <div style={{ position: 'relative', flex: 1, display: 'grid', placeItems: 'center' }}>
@@ -89,9 +92,6 @@ export default function App() {
                       <>
                         <h3 style={{ marginTop: 0, marginBottom: 8 }}>Épilogue{activeScene?.endingTitle ? ` — ${activeScene.endingTitle}` : ''}</h3>
                         <div style={{ marginBottom: 10, whiteSpace: 'pre-wrap', lineHeight: 1.75, fontWeight: 600 }}>{activeScene?.narration}</div>
-                        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                          <button style={btnPrimary} onClick={reset}>↺ Recommencer</button>
-                        </div>
                       </>
                     ) : (
                       <>
@@ -104,7 +104,7 @@ export default function App() {
                       </>
                     )}
                      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                      <button style={btn} onClick={reset}>↺ Recommencer</button>
+                       <button style={btn} onClick={goBack} disabled={activeSceneIndex === 0}>← Précédent</button>
                     </div>
                     {error && <p style={{ color: '#ffb3b3' }}>⚠️ {error}</p>}
                   </>

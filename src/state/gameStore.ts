@@ -15,6 +15,7 @@ interface GameState {
   startGame: (params: GameStartParams) => Promise<void>;
   makeChoice: (choice: string) => Promise<void>;
   answerChallenge: (answer: string, index: number) => Promise<void>;
+  goBack: () => void;
   reset: () => void;
 }
 
@@ -69,6 +70,12 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   answerChallenge: async (answer, index) => {
       await get().makeChoice(answer);
+  },
+
+  goBack: () => {
+    set(state => ({
+      activeSceneIndex: Math.max(0, state.activeSceneIndex - 1)
+    }));
   },
 
   reset: () => {
