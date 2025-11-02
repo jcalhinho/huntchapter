@@ -88,11 +88,13 @@ async function generateText<T extends z.ZodType<any, any>>(prompt: string, schem
 
     } catch (error) {
       lastError = error;
-      console.warn(`Attempt ${i + 1} failed. Retrying...`);
-      prompt = `${prompt}\n\nYour previous response was invalid. Please ensure your response is a valid JSON that strictly follows the requested schema. Error details: ${JSON.stringify(lastError)}`;
+      const errorMessage = error instanceof Error ? error.message : JSON.stringify(error, null, 2);
+      console.warn(`Attempt ${i + 1} failed: ${errorMessage}. Retrying...`);
+      prompt = `${prompt}\n\nYour previous response was invalid. Please ensure your response is a valid JSON that strictly follows the requested schema. Error details: ${errorMessage}`;
     }
   }
-  throw new Error(`Failed to get a valid response from Gemini after ${maxRetries} attempts. Last error: ${JSON.stringify(lastError)}`);
+  const finalErrorMessage = lastError instanceof Error ? lastError.message : JSON.stringify(lastError, null, 2);
+  throw new Error(`Failed to get a valid response from Gemini after ${maxRetries} attempts. Last error: ${finalErrorMessage}`);
 }
 
 async function generateImage(prompt: string): Promise<string | undefined> {
@@ -159,7 +161,7 @@ app.post('/api/game', async (req, res) => {
     const prologuePrompt = `Génère le prologue d'une histoire interactive. Genre: ${genre}, Ton: ${ton}, Point de vue: ${pov}, Cadre: ${cadre}. Le prologue doit planter le décor et se terminer juste avant le premier choix du joueur. Réponds uniquement avec un JSON respectant ce schema: { "narration": "string" }`;
     const prologueResult = await generateText(prologuePrompt, PrologueSchema);
 
-    const firstChoicesPrompt = `Voici le début d'une histoire : "${prologueResult.narration}". Propose 3 options de suite pour le joueur. Réponds uniquement avec un JSON respectant ce schema: { "options": ["choix1", "choix2", "choix3"] }`;
+    const firstChoicesPrompt = `Voici le début d'une histoire : ${prologueResult.narration}. Propose 3 options de suite pour le joueur. Réponds uniquement avec un JSON respectant ce schema: { "options": ["choix1", "choix2", "choix3"] }`;
     const OptionsSchema = z.object({ options: z.array(z.string()).length(3) });
     const firstChoicesResult = await generateText(firstChoicesPrompt, OptionsSchema);
 
