@@ -1,27 +1,30 @@
-// Types & constantes
-
-export type Challenge = {
-  question: string;
-  choices: string[];
-  answerIndex: number;
-};
-
-export type SceneNode = {
+// Represents a single scene in the story, as defined by the backend.
+export interface Scene {
   id: string;
   narration: string;
-  options: string[];
+  options?: string[];
+  challenge?: {
+    question: string;
+    choices: string[];
+  };
   img?: string;
-  status?: 'ongoing' | 'success' | 'failure' | 'end';
+  status?: 'ongoing' | 'win' | 'loss';
   endingTitle?: string;
-  challenge?: Challenge;
-};
+}
 
-export type Settings = {
+// Parameters required to start a new game.
+export interface GameStartParams {
   genre: string;
   ton: string;
-  pov: 'je' | 'tu';
+  pov: string;
   cadre: string;
-};
+}
 
-export const TARGET_SCENES = 20;
-export const CHALLENGE_STEPS = [5, 10, 15, 20];
+// The response from the backend when a new game is started.
+export interface GameStartResponse {
+  gameId: string;
+  prologue: Scene;
+}
+
+// The response from the backend after a player makes a choice.
+export type NewSceneResponse = Scene;

@@ -1,10 +1,11 @@
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { Transition } from 'framer-motion';
 import LoadingGlyph from './components/LoadingGlyph';
 import MagicButton from './components/MagicButton';
 import Field from './components/Field';
 import Options from './components/Options';
-import { useStoryEngine } from './state/useStoryEngine';
+import { useGameStore } from './state/gameStore';
 import { page, rightPane, topbar, bottombar, card, btn, btnPrimary } from './styles/ui';
 
 const cardVariants = {
@@ -15,42 +16,53 @@ const cardVariants = {
 const cardTransition: Transition = { type: 'spring', stiffness: 120, damping: 18, mass: 0.9 };
 
 export default function App() {
+  // Local state for setup screen, not needed in global store
+  const [genre, setGenre] = useState('Fantasy');
+  const [ton, setTon] = useState('Épique');
+  const [pov, setPov] = useState<'je' | 'tu'>('tu');
+  const [cadre, setCadre] = useState('Monde original');
+
+  // Zustand store for all game-related state
   const {
-    genre, ton, pov, cadre, setGenre, setTon, setPov, setCadre,
     started, loading, error, prologue, showPrologue, setShowPrologue,
-    history, active,
-    startGame, pickOption, answerChallenge, reset,
-  } = useStoryEngine({ genre: 'Fantasy', ton: 'Épique', pov: 'tu', cadre: 'Monde original' });
+    history, activeSceneIndex,
+    startGame, makeChoice, answerChallenge, reset,
+  } = useGameStore();
+
+  const activeScene = history[activeSceneIndex];
+
+  const handleStartGame = () => {
+    startGame({ genre, ton, pov, cadre });
+  };
 
   return (
     <div style={page}>
       <div style={rightPane}>
         <div style={topbar}>
-          <div>HuntChapter</div>
-          <div style={{ opacity: 0.7, fontSize: 12 }}></div>
+          <div>StoryRunner</div>
+          <div style={{ opacity: 0.7, fontSize: 12 }}>IA Adventure · Framer Motion</div>
         </div>
 
         <div style={{ position: 'relative', flex: 1, display: 'grid', placeItems: 'center' }}>
           <AnimatePresence mode="wait">
             {!started ? (
               <motion.div key="intro" variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, transformPerspective: 1000 }}>
-                <h2 style={{ margin: '0 0 8px 0' }}></h2>
-                {/* <p style={{ opacity: 0.85, marginTop: 0 }}>Choisis 4 paramètres… puis l’IA lance l’aventure. Que des boutons, aucune saisie.</p> */}
+                <h2 style={{ margin: '0 0 8px 0' }}>Un jeu dont tu es le héros</h2>
+                <p style={{ opacity: 0.85, marginTop: 0 }}>Choisis 4 paramètres… puis l’IA lance l’aventure. Que des boutons, aucune saisie.</p>
                 <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
                   <Field label="Genre"><Options current={genre} setCurrent={setGenre} items={['Fantasy','Science-fiction','Enquête','Survie','Historique']} /></Field>
                   <Field label="Ton"><Options current={ton} setCurrent={setTon} items={['Épique','Sombre','Léger','Mystérieux']} /></Field>
-                  <Field label="Point de vue"><Options current={pov as 'je' | 'tu'} setCurrent={setPov as any} items={['tu','je'] as any} /></Field>
+                  <Field label="Point de vue"><Options current={pov} setCurrent={setPov} items={['tu','je']} /></Field>
                   <Field label="Cadre"><Options current={cadre} setCurrent={setCadre} items={['Monde original','Ville moderne','Espace lointain','Médiéval','Post-apo']} /></Field>
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                  <button style={btnPrimary} onClick={startGame} disabled={loading}>{loading ? 'Initialisation…' : 'Démarrer l’aventure'}</button>
+                  <button style={btnPrimary} onClick={handleStartGame} disabled={loading}>{loading ? 'Initialisation…' : 'Démarrer l’aventure'}</button>
                 </div>
-               
                 {error && <p style={{ color: '#ffb3b3' }}>⚠️ {error}</p>}
               </motion.div>
             ) : (showPrologue ? (
               <motion.div key="prologue" variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, transformPerspective: 1000 }}>
-                {loading ? (
+                {loading && !prologue ? (
                   <>
                     <LoadingGlyph />
                     <p style={{ opacity: 0.8, textAlign: 'center', margin: 0 }}>Confection du prologue…</p>
@@ -67,10 +79,10 @@ export default function App() {
                 )}
               </motion.div>
             ) : (
-              <motion.div key={history[active]?.id || 'scene'} variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, transformPerspective: 1000 }}>
-                {history[active]?.img && (
+              <motion.div key={activeScene?.id || 'scene'} variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, transformPerspective: 1000 }}>
+                {activeScene?.img && (
                   <div style={{ aspectRatio: '16 / 9', background: '#0b0b0f', borderRadius: 12, overflow: 'hidden', marginBottom: 12, border: '1px solid #1c2230' }}>
-                    <img src={history[active]!.img} alt="Illustration de la scène" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <img src={activeScene.img} alt="Illustration de la scène" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                   </div>
                 )}
                 {loading ? (
@@ -80,41 +92,38 @@ export default function App() {
                   </>
                 ) : (
                   <>
-                    {history[active]?.challenge ? (
+                    {activeScene?.challenge ? (
                       <>
-                        <div style={{ marginBottom: 10, whiteSpace: 'pre-wrap', lineHeight: 1.75, fontWeight: 600 }}>{history[active]?.narration}</div>
+                        <div style={{ marginBottom: 10, whiteSpace: 'pre-wrap', lineHeight: 1.75, fontWeight: 600 }}>{activeScene.narration}</div>
                         <h3 style={{ margin: '8px 0 6px 0' }}>Épreuve</h3>
-                        <p style={{ marginTop: 0, marginBottom: 10, opacity: 0.9 }}>{history[active]!.challenge!.question}</p>
+                        <p style={{ marginTop: 0, marginBottom: 10, opacity: 0.9 }}>{activeScene.challenge.question}</p>
                         <div style={{ display: 'grid', gap: 8 }}>
-                          {history[active]!.challenge!.choices.map((label, idx) => (
+                          {activeScene.challenge.choices.map((label, idx) => (
                             <MagicButton key={idx} onClick={() => answerChallenge(label, idx)}>{label}</MagicButton>
                           ))}
                         </div>
-                        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                          <button style={btn} onClick={reset}>↺ Recommencer</button>
-                        </div>
                       </>
-                    ) : ((history[active]?.status && history[active]?.status !== 'ongoing') || (history[active]?.options?.length ?? 0) === 0) ? (
+                    ) : ((activeScene?.status && activeScene.status !== 'ongoing') || (activeScene?.options?.length ?? 0) === 0) ? (
                       <>
-                        <h3 style={{ marginTop: 0, marginBottom: 8 }}>Épilogue{history[active]?.endingTitle ? ` — ${history[active]!.endingTitle}` : ''}</h3>
-                        <div style={{ marginBottom: 10, whiteSpace: 'pre-wrap', lineHeight: 1.75, fontWeight: 600 }}>{history[active]?.narration}</div>
+                        <h3 style={{ marginTop: 0, marginBottom: 8 }}>Épilogue{activeScene?.endingTitle ? ` — ${activeScene.endingTitle}` : ''}</h3>
+                        <div style={{ marginBottom: 10, whiteSpace: 'pre-wrap', lineHeight: 1.75, fontWeight: 600 }}>{activeScene?.narration}</div>
                         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                           <button style={btnPrimary} onClick={reset}>↺ Recommencer</button>
                         </div>
                       </>
                     ) : (
                       <>
-                        <div style={{ marginBottom: 10, whiteSpace: 'pre-wrap', lineHeight: 1.75, fontWeight: 600 }}>{history[active]?.narration}</div>
+                        <div style={{ marginBottom: 10, whiteSpace: 'pre-wrap', lineHeight: 1.75, fontWeight: 600 }}>{activeScene?.narration}</div>
                         <div style={{ display: 'grid', gap: 8 }}>
-                          {history[active]?.options?.map((opt, i) => (
-                            <MagicButton key={i} onClick={() => pickOption(opt)}>{opt}</MagicButton>
+                          {activeScene?.options?.map((opt, i) => (
+                            <MagicButton key={i} onClick={() => makeChoice(opt)}>{opt}</MagicButton>
                           ))}
-                        </div>
-                        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                          <button style={btn} onClick={reset}>↺ Recommencer</button>
                         </div>
                       </>
                     )}
+                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                      <button style={btn} onClick={reset}>↺ Recommencer</button>
+                    </div>
                     {error && <p style={{ color: '#ffb3b3' }}>⚠️ {error}</p>}
                   </>
                 )}
@@ -124,7 +133,8 @@ export default function App() {
         </div>
 
         <div style={bottombar}>
-           </div>
+          <small style={{ opacity: 0.75 }}>Sécurité : l'état du jeu est maintenant géré côté serveur.</small>
+        </div>
       </div>
     </div>
   );
