@@ -156,14 +156,12 @@ app.post('/api/game', async (req, res) => {
     const gameId = crypto.randomUUID();
     const gameParams = { genre, ton, pov, cadre };
 
-    const prologuePrompt = `Génère le prologue d'une histoire interactive. Genre: ${genre}, Ton: ${ton}, Point de vue: ${pov}, Cadre: ${cadre}. Le prologue doit planter le décor et se terminer juste avant le premier choix du joueur. Réponds uniquement avec un JSON respectant ce schema: { "narration": "string" }`;
-
-    const prologueResult = await generateText(prologuePrompt, PrologueSchema);
+    const firstScenePrompt = `Génère la première scène d'une histoire interactive. La scène doit planter le décor et se terminer en proposant 3 choix au joueur. Genre: ${genre}, Ton: ${ton}, Point de vue: ${pov}, Cadre: ${cadre}. Réponds uniquement avec un JSON respectant ce schema: { "narration": "string", "options": ["choix1", "choix2", "choix3"], "status": "ongoing" }`;
+    const firstSceneResult = await generateText(firstScenePrompt, SceneSchema);
 
     const firstScene: Scene = {
-      id: crypto.randomUUID(),
-      status: 'ongoing',
-      ...prologueResult
+        id: crypto.randomUUID(),
+        ...firstSceneResult
     };
 
     const newGame: GameSession = {

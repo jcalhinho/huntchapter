@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Scene, GameStartParams } from '../types';
+import type { Scene, GameStartParams } from '../types';
 import * as api from '../lib/api';
 
 // Define the shape of the store's state

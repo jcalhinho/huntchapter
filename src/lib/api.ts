@@ -1,4 +1,4 @@
-import { Scene, GameStartParams, GameStartResponse, NewSceneResponse } from '../types';
+import type { Scene, GameStartParams, GameStartResponse, NewSceneResponse } from '../types';
 
 /**
  * Starts a new game session on the backend.
