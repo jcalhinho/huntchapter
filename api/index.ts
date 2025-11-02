@@ -1,6 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+// ES module-safe way to get __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 
 type GeminiInlinePart = {
   inline_data?: { data?: string };
@@ -132,7 +138,7 @@ app.post('/api/generate', generateHandler);
 app.post('/api/generate-image', generateImageHandler);
 
 // Serve frontend
-const clientPath = path.join(__dirname, '..', 'dist');
+const clientPath = path.join(__dirname, '..', '..', 'dist');
 app.use(express.static(clientPath));
 
 // For any other request, serve the index.html file
