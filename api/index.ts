@@ -56,7 +56,7 @@ async function generateText<T extends z.ZodType<any, any>>(prompt: string, schem
   let lastError: any = null;
   for (let i = 0; i < maxRetries; i++) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,7 +97,7 @@ async function generateText<T extends z.ZodType<any, any>>(prompt: string, schem
 
 async function generateImage(prompt: string): Promise<string | undefined> {
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
