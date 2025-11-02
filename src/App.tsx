@@ -24,7 +24,7 @@ export default function App() {
 
   // Zustand store for all game-related state
   const {
-    started, loading, error, prologue, showPrologue, setShowPrologue,
+    started, loading, error,
     history, activeSceneIndex,
     startGame, makeChoice, answerChallenge, reset,
   } = useGameStore();
@@ -59,24 +59,6 @@ export default function App() {
                   <button style={btnPrimary} onClick={handleStartGame} disabled={loading}>{loading ? 'Initialisation…' : 'Démarrer l’aventure'}</button>
                 </div>
                 {error && <p style={{ color: '#ffb3b3' }}>⚠️ {error}</p>}
-              </motion.div>
-            ) : (showPrologue ? (
-              <motion.div key="prologue" variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, transformPerspective: 1000 }}>
-                {loading && !prologue ? (
-                  <>
-                    <LoadingGlyph />
-                    <p style={{ opacity: 0.8, textAlign: 'center', margin: 0 }}>Confection du prologue…</p>
-                  </>
-                ) : (
-                  <>
-                    <h3 style={{ marginTop: 0, marginBottom: 8 }}>Prologue</h3>
-                    <div style={{ whiteSpace: 'pre-wrap', opacity: 0.9, marginBottom: 12, lineHeight: 1.75, fontWeight: 600 }}>{prologue}</div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button style={btnPrimary} onClick={() => setShowPrologue(false)}>Entrer dans l’action →</button>
-                      <button style={btn} onClick={reset}>↺ Recommencer</button>
-                    </div>
-                  </>
-                )}
               </motion.div>
             ) : (
               <motion.div key={activeScene?.id || 'scene'} variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, transformPerspective: 1000 }}>
@@ -128,7 +110,7 @@ export default function App() {
                   </>
                 )}
               </motion.div>
-            ))}
+            )}
           </AnimatePresence>
         </div>
 

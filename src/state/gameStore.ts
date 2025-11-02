@@ -9,15 +9,12 @@ interface GameState {
   activeSceneIndex: number;
   loading: boolean;
   error: string | null;
-  prologue: string | null;
-  showPrologue: boolean;
   started: boolean; // Add a simple flag to know if the game has started
 
   // Actions to manipulate the state
   startGame: (params: GameStartParams) => Promise<void>;
   makeChoice: (choice: string) => Promise<void>;
   answerChallenge: (answer: string, index: number) => Promise<void>;
-  setShowPrologue: (show: boolean) => void;
   reset: () => void;
 }
 
@@ -28,8 +25,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   activeSceneIndex: 0,
   loading: false,
   error: null,
-  prologue: null,
-  showPrologue: false,
   started: false,
 
   // --- ACTIONS ---
@@ -40,10 +35,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       const { gameId, prologue } = await api.startGame(params);
       set({
         gameId,
-        prologue: prologue.narration,
         history: [prologue],
         activeSceneIndex: 0,
-        showPrologue: true,
         loading: false,
       });
     } catch (err) {
@@ -78,10 +71,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       await get().makeChoice(answer);
   },
 
-  setShowPrologue: (show) => {
-    set({ showPrologue: show });
-  },
-
   reset: () => {
     set({
       gameId: null,
@@ -89,8 +78,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       activeSceneIndex: 0,
       loading: false,
       error: null,
-      prologue: null,
-      showPrologue: false,
       started: false,
     });
   },

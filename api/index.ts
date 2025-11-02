@@ -165,8 +165,12 @@ app.post('/api/game', async (req, res) => {
     const OptionsSchema = z.object({ options: z.array(z.string()).length(3) });
     const firstChoicesResult = await generateText(firstChoicesPrompt, OptionsSchema);
 
+    const imagePrompt = `Style: ${gameParams.ton}, ${gameParams.genre}. Scene: ${prologueResult.narration.substring(0, 300)}`;
+    const imageUrl = await generateImage(imagePrompt);
+
     const firstScene: Scene = {
       id: crypto.randomUUID(),
+      img: imageUrl,
       status: 'ongoing',
       narration: prologueResult.narration,
       options: firstChoicesResult.options,
