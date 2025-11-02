@@ -156,12 +156,18 @@ app.post('/api/game', async (req, res) => {
     const gameId = crypto.randomUUID();
     const gameParams = { genre, ton, pov, cadre };
 
-    const firstScenePrompt = `Génère la première scène d'une histoire interactive. La scène doit planter le décor et se terminer en proposant 3 choix au joueur. Genre: ${genre}, Ton: ${ton}, Point de vue: ${pov}, Cadre: ${cadre}. Réponds uniquement avec un JSON respectant ce schema: { "narration": "string", "options": ["choix1", "choix2", "choix3"], "status": "ongoing" }`;
-    const firstSceneResult = await generateText(firstScenePrompt, SceneSchema);
+    const prologuePrompt = `Génère le prologue d'une histoire interactive. Genre: ${genre}, Ton: ${ton}, Point de vue: ${pov}, Cadre: ${cadre}. Le prologue doit planter le décor et se terminer juste avant le premier choix du joueur. Réponds uniquement avec un JSON respectant ce schema: { "narration": "string" }`;
+    const prologueResult = await generateText(prologuePrompt, PrologueSchema);
+
+    const firstChoicesPrompt = `Voici le début d'une histoire : "${prologueResult.narration}". Propose 3 options de suite pour le joueur. Réponds uniquement avec un JSON respectant ce schema: { "options": ["choix1", "choix2", "choix3"] }`;
+    const OptionsSchema = z.object({ options: z.array(z.string()).length(3) });
+    const firstChoicesResult = await generateText(firstChoicesPrompt, OptionsSchema);
 
     const firstScene: Scene = {
-        id: crypto.randomUUID(),
-        ...firstSceneResult
+      id: crypto.randomUUID(),
+      status: 'ongoing',
+      narration: prologueResult.narration,
+      options: firstChoicesResult.options,
     };
 
     const newGame: GameSession = {
