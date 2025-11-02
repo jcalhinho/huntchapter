@@ -16,7 +16,7 @@ const GAMES_FILE_PATH = path.join(__dirname, 'games.json');
 type Scene = z.infer<typeof AnySceneSchema> & { id: string; img?: string; };
 type GameSession = {
   id: string;
-  history: (Scene | { id: string, narration: string })[];
+  history: (Scene | { id: string; narration: string; status: 'ongoing' })[];
   params: { genre: string; ton: string; pov: string; cadre: string; };
 }
 type GeminiImageResponse = {
@@ -162,6 +162,7 @@ app.post('/api/game', async (req, res) => {
 
     const firstScene: Scene = {
       id: crypto.randomUUID(),
+      status: 'ongoing',
       ...prologueResult
     };
 
@@ -171,7 +172,7 @@ app.post('/api/game', async (req, res) => {
       history: [firstScene],
     };
     games.set(gameId, newGame);
-    await saveGames(); // Save state after creating a game
+    await saveGames();
 
     res.status(201).json({ gameId, prologue: firstScene });
 
@@ -192,7 +193,7 @@ app.post('/api/game/:id/choice', async (req, res) => {
             return res.status(404).json({ error: 'Game not found' });
         }
 
-        const userChoice = { id: crypto.randomUUID(), narration: `> ${choice}` };
+        const userChoice = { id: crypto.randomUUID(), narration: `> ${choice}`, status: 'ongoing' as const };
         game.history.push(userChoice);
 
         const context = game.history.map(s => s.narration).join('\n\n');
@@ -211,7 +212,7 @@ app.post('/api/game/:id/choice', async (req, res) => {
 
         game.history.push(newScene);
         games.set(gameId, game);
-        await saveGames(); // Save state after a choice is made
+        await saveGames();
 
         res.status(200).json(newScene);
 
