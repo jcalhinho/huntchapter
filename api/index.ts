@@ -2,13 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import crypto from 'crypto';
+import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { z } from 'zod';
-import { PrologueSchema, SceneSchema, AnySceneSchema } from './schemas';
+import { PrologueSchema, SceneSchema, AnySceneSchema } from './schemas.js';
 
 // ES module-safe way to get __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const GAMES_FILE_PATH = path.join(__dirname, 'games.json');
 
 // --- TYPES ---
 type Scene = z.infer<typeof AnySceneSchema> & { id: string; img?: string; };
@@ -22,8 +24,30 @@ type GeminiImageResponse = {
 };
 
 
-// --- IN-MEMORY STORAGE ---
-const games = new Map<string, GameSession>();
+// --- IN-MEMORY STORAGE & PERSISTENCE ---
+let games = new Map<string, GameSession>();
+
+async function saveGames() {
+  const data = JSON.stringify(Array.from(games.entries()), null, 2);
+  await fs.writeFile(GAMES_FILE_PATH, data, 'utf-8');
+}
+
+async function loadGames() {
+  try {
+    const data = await fs.readFile(GAMES_FILE_PATH, 'utf-8');
+    if (data) {
+      games = new Map(JSON.parse(data));
+      console.log(`Loaded ${games.size} games from disk.`);
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      console.log('games.json not found. Starting with a clean state.');
+      return;
+    }
+    console.error("Failed to load games from disk:", error);
+  }
+}
+
 
 // --- GEMINI API HELPERS ---
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -93,7 +117,7 @@ async function generateImage(prompt: string): Promise<string | undefined> {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Gemini Image API Error:", response.status, errorText.slice(0, 500));
-      return undefined; // Fail gracefully
+      return undefined;
     }
 
     const data = (await response.json()) as GeminiImageResponse;
@@ -108,7 +132,7 @@ async function generateImage(prompt: string): Promise<string | undefined> {
 
   } catch (error) {
     console.error("Failed to generate image:", error);
-    return undefined; // Fail gracefully
+    return undefined;
   }
 }
 
@@ -147,6 +171,7 @@ app.post('/api/game', async (req, res) => {
       history: [firstScene],
     };
     games.set(gameId, newGame);
+    await saveGames(); // Save state after creating a game
 
     res.status(201).json({ gameId, prologue: firstScene });
 
@@ -164,7 +189,7 @@ app.post('/api/game/:id/choice', async (req, res) => {
 
         const game = games.get(gameId);
         if (!game) {
-            return res.status(444).json({ error: 'Game not found' });
+            return res.status(404).json({ error: 'Game not found' });
         }
 
         const userChoice = { id: crypto.randomUUID(), narration: `> ${choice}` };
@@ -186,6 +211,7 @@ app.post('/api/game/:id/choice', async (req, res) => {
 
         game.history.push(newScene);
         games.set(gameId, game);
+        await saveGames(); // Save state after a choice is made
 
         res.status(200).json(newScene);
 
@@ -204,6 +230,9 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(clientPath, 'index.html'));
 });
 
-app.listen(port, () => {
-  console.log(`Server listening on http://localhost:${port}`);
+// Load games and start the server
+loadGames().then(() => {
+  app.listen(port, () => {
+    console.log(`Server listening on http://localhost:${port}`);
+  });
 });
