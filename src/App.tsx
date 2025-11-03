@@ -1,11 +1,11 @@
-import { useState } from 'react';
+
 import { AnimatePresence, motion } from 'framer-motion';
 import type { Transition } from 'framer-motion';
 import LoadingGlyph from './components/LoadingGlyph';
 import MagicButton from './components/MagicButton';
 import WordCloud from './components/WordCloud';
 import { useGameStore } from './state/gameStore';
-import { page, rightPane, topbar, bottombar, card, btn, btnPrimary } from './styles/ui';
+import { page, rightPane, topbar, bottombar, card, btn } from './styles/ui';
 
 const cardVariants = {
   initial: { opacity: 0, y: 40, scale: 0.95, rotateX: 8, filter: 'blur(8px)' as any },
