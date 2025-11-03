@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence, useSpring, useMotionValue, useTransform } from 'framer-motion';
+import { useState, useRef } from 'react';
+import { motion, AnimatePresence, useMotionValue, useTransform, MotionValue } from 'framer-motion';
 import MagicButton from './MagicButton';
 
 // --- CONFIGURATION ---
@@ -23,7 +23,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   container: {
     width: '100%',
-    height: '400px', // Reduced height
+    height: '400px',
     position: 'relative',
     border: '1px solid #1c2230',
     background: '#0b0b0f',
@@ -36,18 +36,19 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxSizing: 'border-box',
     overflow: 'hidden',
     cursor: 'pointer',
-    perspective: '800px', // Added for 3D effect
+    perspective: '800px',
   },
   word: {
     padding: '8px 16px',
     margin: '8px',
-    color: 'white',
+    color: '#111', // Dark text for contrast
+    background: 'white', // Card-like background
     borderRadius: '8px',
     cursor: 'grab',
     fontSize: '16px',
-    border: '1px solid transparent',
     userSelect: 'none',
-    position: 'relative', // Needed for zIndex to work with scale
+    position: 'relative',
+    boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
   },
   dropZoneContainer: {
     width: '100%',
@@ -58,13 +59,13 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   dropZone: {
     width: '80%',
-    minHeight: '60px', // Use min-height to allow it to grow
+    minHeight: '60px',
     border: '2px dashed #1c2230',
     borderRadius: '12px',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    flexWrap: 'wrap', // Allow pills to wrap
+    flexWrap: 'wrap',
     gap: '8px',
     padding: '12px',
     color: '#343d4e',
@@ -91,10 +92,29 @@ const containerVariants = {
 };
 
 // --- WORD COMPONENT ---
-const Word = ({ children, onDrop }: { children: string; onDrop: () => void; }) => {
+const Word = ({ children, onDrop, mouseX, mouseY }: { children: string; onDrop: () => void; mouseX: MotionValue; mouseY: MotionValue; }) => {
+  const ref = useRef<HTMLDivElement>(null);
+
+  const rotateX = useTransform(mouseY, (y) => {
+    if (!ref.current) return 0;
+    const rect = ref.current.getBoundingClientRect();
+    const relativeY = y - rect.top;
+    const proximity = 1 - Math.abs(relativeY / (rect.height / 2)) / 4;
+    return (relativeY - rect.height / 2) * 0.1 * proximity;
+  });
+
+  const rotateY = useTransform(mouseX, (x) => {
+    if (!ref.current) return 0;
+    const rect = ref.current.getBoundingClientRect();
+    const relativeX = x - rect.left;
+    const proximity = 1 - Math.abs(relativeX / (rect.width / 2)) / 4;
+    return (relativeX - rect.width / 2) * 0.1 * proximity;
+  });
+
   return (
     <motion.div
-      style={styles.word}
+      ref={ref}
+      style={{ ...styles.word, rotateX, rotateY }}
       drag
       onDragEnd={(event, info) => {
         const dropZone = document.getElementById('drop-zone');
@@ -105,8 +125,8 @@ const Word = ({ children, onDrop }: { children: string; onDrop: () => void; }) =
           }
         }
       }}
-      whileHover={{ scale: 1.2, z: 20 }}
-      transition={{ type: 'spring', stiffness: 300 }}
+      whileHover={{ scale: 1.2, z: 20, boxShadow: '0 10px 30px rgba(0,0,0,0.4)' }}
+      transition={{ type: 'spring', stiffness: 400, damping: 15 }}
     >
       {children}
     </motion.div>
@@ -139,18 +159,12 @@ export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: str
   const [isSubmitting, setIsSubmitting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-
-  const rotateX = useTransform(y, [0, 400], [25, -25]);
-  const rotateY = useTransform(x, [0, 800], [-25, 25]);
+  const mouseX = useMotionValue(typeof window !== "undefined" ? window.innerWidth / 2 : 0);
+  const mouseY = useMotionValue(typeof window !== "undefined" ? window.innerHeight / 2 : 0);
 
   function handleMouse(event: React.MouseEvent) {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      x.set(event.clientX - rect.left);
-      y.set(event.clientY - rect.top);
-    }
+    mouseX.set(event.clientX);
+    mouseY.set(event.clientY);
   };
 
   const handleWordDrop = (word: string) => {
@@ -177,13 +191,15 @@ export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: str
         <motion.div style={styles.wrapper} variants={containerVariants} initial="hidden" animate="visible" exit="exit">
           <motion.div
             ref={containerRef}
-            style={{ ...styles.container, rotateX, rotateY }}
+            style={styles.container}
             onMouseMove={handleMouse}
           >
             {shuffledWords.filter(w => !selectedWords.includes(w)).map(word => (
               <Word
                 key={word}
                 onDrop={() => handleWordDrop(word)}
+                mouseX={mouseX}
+                mouseY={mouseY}
               >
                 {word}
               </Word>
