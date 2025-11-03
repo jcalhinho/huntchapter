@@ -94,7 +94,7 @@ const containerVariants = {
     opacity: 0,
     transition: {
       duration: 0.4,
-      ease: [0.76, 0, 0.24, 1],
+      ease: [0.76, 0, 0.24, 1] as const,
       staggerChildren: 0.03,
       staggerDirection: -1,
     },
@@ -110,7 +110,8 @@ const wordVariants = {
 // --- WORD COMPONENT ---
 const Word = ({ children, onDrop, mousePosition }: { children: string; onDrop: () => void; mousePosition: { x: number | null, y: number | null } }) => {
   const ref = useRef<HTMLDivElement>(null);
-  const { x, y } = useSpring({ x: 0, y: 0, stiffness: 150, damping: 15, mass: 0.1 });
+  const x = useSpring(0, { stiffness: 150, damping: 15, mass: 0.1 });
+  const y = useSpring(0, { stiffness: 150, damping: 15, mass: 0.1 });
 
   useEffect(() => {
     if (ref.current && mousePosition.x !== null && mousePosition.y !== null) {
@@ -136,7 +137,6 @@ const Word = ({ children, onDrop, mousePosition }: { children: string; onDrop: (
       ref={ref}
       style={{ ...styles.word, x, y }}
       drag
-      dragSnapToCenter
       onDragEnd={(event, info) => {
         const dropZone = document.getElementById('drop-zone');
         if (dropZone) {
@@ -221,7 +221,7 @@ export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: str
           exit="exit"
         >
           <AnimatePresence>
-            {mousePosition.x !== null && (
+            {mousePosition.x !== null && mousePosition.y !== null && (
               <motion.div
                 style={{...styles.cursor, left: mousePosition.x - 15, top: mousePosition.y - 15}}
                 initial={{ opacity: 0, scale: 0 }}

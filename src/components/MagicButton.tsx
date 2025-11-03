@@ -1,11 +1,12 @@
 import { motion } from 'framer-motion';
 import { optBtnBig } from '../styles/ui';
 
-export default function MagicButton({ children, onClick }: { children: any; onClick: () => void }) {
+export default function MagicButton({ children, onClick, disabled }: { children: any; onClick: () => void, disabled?: boolean }) {
   return (
     <motion.button
       onClick={onClick}
-      style={optBtnBig}
+      disabled={disabled}
+      style={{...optBtnBig, ...(disabled ? { opacity: 0.5, cursor: 'not-allowed' } : {})}}
       whileHover={{ y: -2, scale: 1.02, boxShadow: '0 18px 60px rgba(106,167,255,0.35)', backgroundPosition: '100% 0' }}
       whileTap={{ scale: 0.985 }}
       transition={{ type: 'spring', stiffness: 300, damping: 22 }}
