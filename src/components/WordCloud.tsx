@@ -129,7 +129,7 @@ const Word = ({ children, onDrop, mousePosition }: { children: string; onDrop: (
       x.set(0);
       y.set(0);
     }
-  }, [mousePosition, x, y]);
+  }, [mousePosition]);
 
   return (
     <motion.div
