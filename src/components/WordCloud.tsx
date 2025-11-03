@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence, useSpring } from 'framer-motion';
+import { motion, AnimatePresence, useSpring, useMotionValue, useTransform } from 'framer-motion';
 import MagicButton from './MagicButton';
 
 // --- CONFIGURATION ---
@@ -15,9 +15,15 @@ const shuffledWords = wordsList.sort(() => 0.5 - Math.random()).slice(0, 30);
 
 // --- STYLES ---
 const styles: { [key: string]: React.CSSProperties } = {
+  wrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '20px',
+  },
   container: {
     width: '100%',
-    height: '500px',
+    height: '400px', // Reduced height
     position: 'relative',
     border: '1px solid #1c2230',
     background: '#0b0b0f',
@@ -29,7 +35,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: '20px',
     boxSizing: 'border-box',
     overflow: 'hidden',
-    cursor: 'none',
+    cursor: 'pointer',
+    perspective: '800px', // Added for 3D effect
   },
   word: {
     padding: '8px 16px',
@@ -40,19 +47,26 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '16px',
     border: '1px solid transparent',
     userSelect: 'none',
+    position: 'relative', // Needed for zIndex to work with scale
+  },
+  dropZoneContainer: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '16px',
   },
   dropZone: {
-    position: 'absolute',
-    bottom: '80px',
-    left: '50%',
-    transform: 'translateX(-50%)',
     width: '80%',
-    height: '60px',
+    minHeight: '60px', // Use min-height to allow it to grow
     border: '2px dashed #1c2230',
     borderRadius: '12px',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
+    flexWrap: 'wrap', // Allow pills to wrap
+    gap: '8px',
+    padding: '12px',
     color: '#343d4e',
     transition: 'border-color 0.3s, background-color 0.3s',
   },
@@ -66,76 +80,21 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: '#61dafb',
     borderRadius: '6px',
     fontSize: '14px',
-    margin: '0 4px',
   },
-  cursor: {
-    width: '30px',
-    height: '30px',
-    borderRadius: '50%',
-    border: '2px solid #61dafb',
-    position: 'absolute',
-    pointerEvents: 'none',
-    zIndex: 9999,
-  }
 };
 
 // --- ANIMATION VARIANTS ---
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      delayChildren: 0.1,
-      staggerChildren: 0.05,
-    },
-  },
-  exit: {
-    scale: 0.8,
-    opacity: 0,
-    transition: {
-      duration: 0.4,
-      ease: [0.76, 0, 0.24, 1] as const,
-      staggerChildren: 0.03,
-      staggerDirection: -1,
-    },
-  },
-};
-
-const wordVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 },
-  exit: { opacity: 0, scale: 0.8 },
+  visible: { opacity: 1 },
+  exit: { scale: 0.9, opacity: 0, transition: { duration: 0.3 } },
 };
 
 // --- WORD COMPONENT ---
-const Word = ({ children, onDrop, mousePosition }: { children: string; onDrop: () => void; mousePosition: { x: number | null, y: number | null } }) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const x = useSpring(0, { stiffness: 150, damping: 15, mass: 0.1 });
-  const y = useSpring(0, { stiffness: 150, damping: 15, mass: 0.1 });
-
-  useEffect(() => {
-    if (ref.current && mousePosition.x !== null && mousePosition.y !== null) {
-      const rect = ref.current.getBoundingClientRect();
-      const distance = Math.sqrt(Math.pow(rect.x + rect.width / 2 - mousePosition.x, 2) + Math.pow(rect.y + rect.height / 2 - mousePosition.y, 2));
-
-      if (distance < 100) {
-        const angle = Math.atan2((rect.y + rect.height / 2) - mousePosition.y, (rect.x + rect.width / 2) - mousePosition.x);
-        x.set(Math.cos(angle) * 50);
-        y.set(Math.sin(angle) * 50);
-      } else {
-        x.set(0);
-        y.set(0);
-      }
-    } else {
-      x.set(0);
-      y.set(0);
-    }
-  }, [mousePosition]);
-
+const Word = ({ children, onDrop }: { children: string; onDrop: () => void; }) => {
   return (
     <motion.div
-      ref={ref}
-      style={{ ...styles.word, x, y }}
+      style={styles.word}
       drag
       onDragEnd={(event, info) => {
         const dropZone = document.getElementById('drop-zone');
@@ -146,7 +105,8 @@ const Word = ({ children, onDrop, mousePosition }: { children: string; onDrop: (
           }
         }
       }}
-      variants={wordVariants}
+      whileHover={{ scale: 1.2, z: 20 }}
+      transition={{ type: 'spring', stiffness: 300 }}
     >
       {children}
     </motion.div>
@@ -157,23 +117,19 @@ const Word = ({ children, onDrop, mousePosition }: { children: string; onDrop: (
 const DropZone = ({ selectedWords }: { selectedWords: string[] }) => {
     const [isHovered, setIsHovered] = useState(false);
     return (
-        <motion.div
+        <div
             id="drop-zone"
             style={{...styles.dropZone, ...(isHovered ? styles.dropZoneHover : {})}}
-            onDragOver={(e) => {
-                e.preventDefault();
-                setIsHovered(true);
-            }}
+            onDragOver={(e) => { e.preventDefault(); setIsHovered(true); }}
             onDragLeave={() => setIsHovered(false)}
             onDrop={() => setIsHovered(false)}
-            variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
         >
             {selectedWords.length > 0 ? (
-                selectedWords.map(word => <motion.div key={word} style={styles.selectedWordPill} layout>{word}</motion.div>)
+                selectedWords.map(word => <div key={word} style={styles.selectedWordPill}>{word}</div>)
             ) : (
-                "Glissez 6 mots ici"
+                "Glissez jusqu'à 6 mots ici"
             )}
-        </motion.div>
+        </div>
     );
 }
 
@@ -181,13 +137,20 @@ const DropZone = ({ selectedWords }: { selectedWords: string[] }) => {
 export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: string[]) => void, loading: boolean }) {
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mousePosition, setMousePosition] = useState<{x: number | null, y: number | null}>({ x: null, y: null });
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    setMousePosition({ x: e.clientX, y: e.clientY });
-  };
-   const handleMouseLeave = () => {
-    setMousePosition({ x: null, y: null });
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const rotateX = useTransform(y, [0, 400], [25, -25]);
+  const rotateY = useTransform(x, [0, 800], [-25, 25]);
+
+  function handleMouse(event: React.MouseEvent) {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      x.set(event.clientX - rect.left);
+      y.set(event.clientY - rect.top);
+    }
   };
 
   const handleWordDrop = (word: string) => {
@@ -211,54 +174,39 @@ export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: str
   return (
     <AnimatePresence onExitComplete={handleExitComplete}>
       {!isSubmitting && (
-        <motion.div
-          style={styles.container}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-        >
-          <AnimatePresence>
-            {mousePosition.x !== null && mousePosition.y !== null && (
-              <motion.div
-                style={{...styles.cursor, left: mousePosition.x - 15, top: mousePosition.y - 15}}
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0 }}
-                transition={{ duration: 0.2 }}
-              />
-            )}
-          </AnimatePresence>
-
-          {shuffledWords.filter(w => !selectedWords.includes(w)).map(word => (
-            <Word
-              key={word}
-              onDrop={() => handleWordDrop(word)}
-              mousePosition={mousePosition}
-            >
-              {word}
-            </Word>
-          ))}
-
-          <DropZone selectedWords={selectedWords} />
-
-          <AnimatePresence>
-            {selectedWords.length === 6 && (
-              <motion.div
-                style={{ position: 'absolute', bottom: '20px' }}
-                variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
-                initial="hidden"
-                animate="visible"
-                exit="hidden"
+        <motion.div style={styles.wrapper} variants={containerVariants} initial="hidden" animate="visible" exit="exit">
+          <motion.div
+            ref={containerRef}
+            style={{ ...styles.container, rotateX, rotateY }}
+            onMouseMove={handleMouse}
+          >
+            {shuffledWords.filter(w => !selectedWords.includes(w)).map(word => (
+              <Word
+                key={word}
+                onDrop={() => handleWordDrop(word)}
               >
-                <MagicButton onClick={handleSubmit} disabled={loading}>
-                  {loading ? 'Création...' : 'Forger le destin'}
-                </MagicButton>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                {word}
+              </Word>
+            ))}
+          </motion.div>
+
+          <div style={styles.dropZoneContainer}>
+            <DropZone selectedWords={selectedWords} />
+
+            <AnimatePresence>
+              {selectedWords.length === 6 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                >
+                  <MagicButton onClick={handleSubmit} disabled={loading}>
+                    {loading ? 'Création...' : 'Forger le destin'}
+                  </MagicButton>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>
