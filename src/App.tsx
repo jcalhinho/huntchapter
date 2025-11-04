@@ -3,10 +3,11 @@ import { AnimatePresence, motion } from 'framer-motion';
 import type { Transition, Variants } from 'framer-motion';
 import LoadingGlyph from './components/LoadingGlyph';
 import MagicButton from './components/MagicButton';
-import WordCloud from './components/WordCloud';
+import WordCloud, { type WordCloudSubmit } from './components/WordCloud';
 import MagicCursor from './components/MagicCursor';
 import { useGameStore } from './state/gameStore';
-import { page, rightPane, topbar, bottombar, card, btn, contentWrap } from './styles/ui';
+import { page, rightPane, topbar, bottombar, card, btn, contentWrap, engineBadge, engineBadgeDot } from './styles/ui';
+import { getUniverseById } from './lib/universes';
 
 const cardVariants: Variants = {
   initial: { opacity: 0, y: 40, scale: 0.95, rotateX: 8, filter: 'blur(8px)' },
@@ -20,19 +21,27 @@ export default function App() {
   const {
     started, loading, error,
     history, activeSceneIndex,
-    startGame, makeChoice, answerChallenge, goBack, reset,
+    startGame, makeChoice, answerChallenge, goBack, reset, mode,
   } = useGameStore();
 
   const activeScene = history[activeSceneIndex];
+  const engineLabel = mode === 'local' ? 'Gemini Nano (local)' : mode === 'remote' ? 'Gemini Cloud' : 'Moteur inactif';
+  const engineColor = mode === 'local' ? '#4ade80' : mode === 'remote' ? '#60a5fa' : '#94a3b8';
+  const engineStatus = loading ? 'Génération en cours...' : engineLabel;
 
-  const handleStartGame = (words: string[]) => {
-    // Les mots choisis par l'utilisateur deviennent le cadre de l'histoire.
-    // Le genre et le ton peuvent être fixés ou dérivés plus tard.
-    const storyPrompt = `Une histoire basée sur les concepts suivants : ${words.join(', ')}.`;
+  const handleStartGame = ({ universeId, words }: WordCloudSubmit) => {
+    const universe = getUniverseById(universeId);
+    if (!universe) {
+      console.warn('[App] Univers selectionne introuvable:', universeId);
+      return;
+    }
+
+    const conceptList = words.join(', ');
+    const storyPrompt = `Univers ${universe.label} — ${universe.description} | Concepts joueurs : ${conceptList}.`;
     startGame({
-      genre: 'Création du joueur',
-      ton: 'Inattendu',
-      pov: 'tu',
+      genre: universe.genre,
+      ton: universe.ton,
+      pov: universe.pov,
       cadre: storyPrompt,
     });
   };
@@ -136,6 +145,10 @@ export default function App() {
         </div>
       </div>
     </div>
+      <div style={{ ...engineBadge, opacity: started ? 1 : 0.8 }}>
+        <span style={{ ...engineBadgeDot, color: engineColor, backgroundColor: engineColor }} />
+        <span>{engineStatus}</span>
+      </div>
     </>
   );
 }

@@ -70,3 +70,28 @@ export const optBtnBig: React.CSSProperties = {
   textAlign: 'left',
   transform: 'perspective(800px) rotateX(calc(var(--my, 0) * 1deg)) rotateY(calc(var(--mx, 0) * 1deg))',
 };
+
+export const engineBadge: React.CSSProperties = {
+  position: 'fixed',
+  left: 16,
+  bottom: 16,
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 10,
+  padding: '10px 14px',
+  borderRadius: 14,
+  background: 'rgba(16, 20, 32, 0.78)',
+  color: '#f5f7ff',
+  fontSize: 13,
+  letterSpacing: 0.3,
+  border: '1px solid rgba(88, 120, 188, 0.35)',
+  backdropFilter: 'blur(10px)',
+  zIndex: 99,
+};
+
+export const engineBadgeDot: React.CSSProperties = {
+  width: 10,
+  height: 10,
+  borderRadius: 999,
+  boxShadow: '0 0 14px currentColor',
+};

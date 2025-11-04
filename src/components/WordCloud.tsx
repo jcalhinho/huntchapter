@@ -2,19 +2,9 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObjec
 import { AnimatePresence, motion, useMotionValue, useSpring } from 'framer-motion';
 import type { MotionValue } from 'framer-motion';
 import MagicButton from './MagicButton';
+import { UNIVERSES, type UniverseConfig } from '../lib/universes';
 
-const wordsList = [
-  'Forêt', 'Château', 'Dragon', 'Magie', 'Trésor', 'Quête', 'Princesse', 'Chevalier', 'Épée',
-  'Mystère', 'Nuit', 'Étoiles', 'Lune', 'Ombre', 'Secret', 'Destin', 'Courage', 'Peur',
-  'Amour', 'Haine', 'Vengeance', 'Alliance', 'Trahison', 'Prophétie', 'Ancien', 'Artefact',
-  'Créature', 'Royaume', 'Guerre', 'Paix', 'Honneur', 'Gloire', 'Ruines', 'Savoir', 'Pouvoir',
-  'Voyage', 'Temps', 'Portail', 'Île', 'Désert', 'Montagne', 'Océan', 'Rivière', 'Cité',
-  'Légende', 'Mythe', 'Héros', 'Monstre', 'Dieu', 'Esprit','Rituel', 'Cauchemar', 'Tombeau', 'Reliques', 'Abysses', 'Malédiction', 'Sanctuaire', 'Oracle', 'Vision', 'Sépulcre',
-  'Corruption', 'Ténèbres', 'Lumière', 'Sang', 'Pacte', 'Énigme', 'Labyrinthe', 'Hurlement', 'Chuchotement', 'Spectre',
-  'Nécromancien', 'Alchimie', 'Runes', 'Arcanes', 'Inquisiteur', 'Révélation', 'Crépuscule', 'Aube', 'Éclipse', 'Faille',
-  'Souterrain', 'Catacombes', 'Fantôme', 'Ombres', 'Gardiens', 'Veilleur', 'Effroi', 'Folie', 'Serment', 'Trône',
-  'Bannière', 'Conjuration', 'Invocation', 'Dague', 'Poison', 'Clairvoyance', 'Prophète', 'Vestiges', 'Grimoire', 'Obélisque',
-];
+export type WordCloudSubmit = { universeId: string; words: string[] };
 
 const MAX_SELECTION = 6;
 const DROP_ZONE_HEIGHT = 110;
@@ -106,6 +96,54 @@ const styles: Record<string, CSSProperties> = {
     color: '#61dafb',
     borderRadius: 8,
     fontSize: 14,
+  },
+  universesWrapper: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  universeGrid: {
+    width: '100%',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+    gap: 12,
+  },
+  universeCard: {
+    borderRadius: 14,
+    border: '1px solid rgba(97,107,142,0.45)',
+    background: 'rgba(16,20,32,0.65)',
+    padding: '14px 16px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    color: '#f5f7ff',
+    cursor: 'pointer',
+    transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
+  },
+  universeCardActive: {
+    borderColor: '#61dafb',
+    boxShadow: '0 0 24px rgba(97,218,251,0.25)',
+    transform: 'translateY(-2px)',
+  },
+  universeBadge: {
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    opacity: 0.7,
+  },
+  universeTitle: {
+    margin: 0,
+    fontSize: 15,
+    fontWeight: 600,
+  },
+  universeDescription: {
+    margin: 0,
+    fontSize: 13,
+    opacity: 0.76,
+    lineHeight: 1.4,
   },
 };
 
@@ -215,7 +253,14 @@ const Word = ({
   );
 };
 
-export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: string[]) => void; loading: boolean }) {
+export default function WordCloud({
+  onSubmit,
+  loading,
+}: {
+  onSubmit: (payload: WordCloudSubmit) => void;
+  loading: boolean;
+}) {
+  const [selectedUniverseId, setSelectedUniverseId] = useState<string | null>(null);
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pointerActive, setPointerActive] = useState(false);
@@ -242,9 +287,24 @@ export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: str
     }
   }, [isCompact]);
 
+  const selectedUniverse = useMemo<UniverseConfig | null>(
+    () => (selectedUniverseId ? UNIVERSES.find((universe) => universe.id === selectedUniverseId) ?? null : null),
+    [selectedUniverseId],
+  );
+
+  useEffect(() => {
+    setSelectedWords([]);
+    setIsSubmitting(false);
+  }, [selectedUniverseId]);
+
   const shuffledWords = useMemo(
-    () => [...wordsList].sort(() => Math.random() - 0.5).slice(0, 50),
-    [],
+    () =>
+      selectedUniverse
+        ? [...selectedUniverse.words]
+            .sort(() => Math.random() - 0.5)
+            .slice(0, Math.min(selectedUniverse.words.length, 100))
+        : [],
+    [selectedUniverse],
   );
 
   const cloudWords = useMemo(
@@ -253,6 +313,7 @@ export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: str
   );
 
   const handleWordDrop = (word: string) => {
+    if (!selectedUniverse) return;
     setSelectedWords((prev) => {
       if (prev.length >= MAX_SELECTION || prev.includes(word)) {
         return prev;
@@ -266,9 +327,9 @@ export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: str
   };
 
   const handleSubmit = () => {
-    if (selectedWords.length === MAX_SELECTION && !loading && !isSubmitting) {
+    if (selectedUniverse && selectedWords.length === MAX_SELECTION && !loading && !isSubmitting) {
       setIsSubmitting(true);
-      onSubmit([...selectedWords]);
+      onSubmit({ universeId: selectedUniverse.id, words: [...selectedWords] });
     }
   };
 
@@ -316,9 +377,13 @@ export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: str
     } : {}),
   }), [isCompact]);
 
-  const instructionText = isCompact ? 'Touchez 6 mots ici' : 'Glissez 6 mots ici';
-  const helperTextPrefix = isCompact ? 'Touchez' : 'Glissez';
-  const dropHover = selectedWords.length > 0 && selectedWords.length < MAX_SELECTION;
+  const instructionText = !selectedUniverse
+    ? 'Choisissez un univers pour afficher les mots.'
+    : isCompact
+      ? 'Touchez 6 mots ici'
+      : 'Sélectionnez 6 mots ici';
+  const helperTextPrefix = isCompact ? 'Touchez' : 'Sélectionnez';
+  const dropHover = !!selectedUniverse && selectedWords.length > 0 && selectedWords.length < MAX_SELECTION;
 
   return (
     <AnimatePresence>
@@ -337,28 +402,64 @@ export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: str
             onPointerEnter={handlePointerEnter}
             onPointerLeave={handlePointerLeave}
           >
-            <div
-              ref={cloudLayerRef}
-              style={{
-                ...responsiveWordsLayer,
-                overflow: isCompact ? 'auto' : 'visible',
-              }}
-            >
-              {cloudWords.map((word) => (
-                <Word
-                  key={word}
-                  text={word}
-                  origin="cloud"
-                  containerRef={containerRef}
-                  canDrop={selectedWords.length < MAX_SELECTION}
-                  onMoveToDrop={() => handleWordDrop(word)}
-                  onMoveToCloud={() => {}}
-                  mouseX={mouseX}
-                  mouseY={mouseY}
-                  pointerActive={pointerActive}
-                />
-              ))}
+            <div style={styles.universesWrapper}>
+              <div style={{ fontWeight: 600, fontSize: 14, opacity: 0.85, color: '#f5f7ff' }}>
+                Choisissez un univers narratif
+              </div>
+              <div style={styles.universeGrid}>
+                {UNIVERSES.map((universe) => {
+                  const active = universe.id === selectedUniverseId;
+                  return (
+                    <button
+                      key={universe.id}
+                      type="button"
+                      onClick={() => setSelectedUniverseId(universe.id)}
+                      style={{ ...styles.universeCard, ...(active ? styles.universeCardActive : {}) }}
+                    >
+                      <span style={styles.universeBadge}>{universe.genre}</span>
+                      <span style={styles.universeTitle}>{universe.label}</span>
+                      <span style={styles.universeDescription}>{universe.description}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
+
+            {selectedUniverse ? (
+              <div
+                ref={cloudLayerRef}
+                style={{
+                  ...responsiveWordsLayer,
+                  overflow: isCompact ? 'auto' : 'visible',
+                }}
+              >
+                {cloudWords.map((word) => (
+                  <Word
+                    key={word}
+                    text={word}
+                    origin="cloud"
+                    containerRef={containerRef}
+                    canDrop={selectedWords.length < MAX_SELECTION}
+                    onMoveToDrop={() => handleWordDrop(word)}
+                    onMoveToCloud={() => {}}
+                    mouseX={mouseX}
+                    mouseY={mouseY}
+                    pointerActive={pointerActive}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div
+                style={{
+                  padding: '18px 16px',
+                  color: '#9da7c2',
+                  fontSize: 14,
+                  textAlign: 'center',
+                }}
+              >
+                Selectionnez un univers pour decouvrir la constellation de mots correspondante.
+              </div>
+            )}
 
             <div
               ref={dropZoneRef}
