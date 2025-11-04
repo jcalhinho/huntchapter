@@ -1,61 +1,50 @@
 import type { SceneNode, Settings } from '../types';
-import { TARGET_SCENES, CHALLENGE_STEPS } from '../types';
+import { STORY_CONFIG } from '../types';
+
+const { TARGET_SCENES, CHALLENGE_STEPS, FINAL_SCENE } = STORY_CONFIG;
 
 export function adventurePromptIntroStart(settings: Settings) {
-  return `Tu es un Maître de Jeu IA. Génère un PROLOGUE puis la PREMIÈRE SCÈNE.
+  const challenges = CHALLENGE_STEPS.map((step) => `scene ${step}`).join(' and ');
+  return `You are an interactive storyteller AI. Plan a French-language adventure for exactly ${TARGET_SCENES} scenes (scenes 1–${FINAL_SCENE}). Scenes ${challenges} are mandatory challenge scenes and scene ${FINAL_SCENE} is the ending.
 
-Objectif: aventure d'environ ${TARGET_SCENES} scènes avec épreuves aux scènes ${CHALLENGE_STEPS.join(', ')}. La première scène n'est **pas** une épreuve.
+Write a French prologue that sets the tone (genre: ${settings.genre}, tone: ${settings.ton}, POV: ${settings.pov}) and transitions naturally into the first decision.
 
-Réponds STRICTEMENT en JSON sans commentaire :
-{
-  "prologue": string (2 à 4 phrases, contexte du monde et de la mission),
-  "scene": {
-    "narration": string (2 à 5 phrases, <= 120 mots, en "${settings.pov}"),
-    "options": [ string, string, string ],
-    "status": "ongoing"
-  }
-}
-Contraintes: français, SFW, sans contenu choquant. Commence in medias res pour la scène.`;
+Respond with JSON only:
+{ "narration": "French prologue in 2-4 sentences (<=120 words) ending right before the first choice." }
+
+All narrative content must be in French, even though these instructions are in English.`;
 }
 
-export function adventurePromptContinue(history: SceneNode[], choice: string) {
-  const context = history.slice(-5).map((h, i) => ({
-    step: history.length - 5 + i + 1,
-    narration: h.narration,
-    options: h.options,
-    status: h.status || 'ongoing',
-    challenge: h.challenge ? { question: h.challenge.question, choices: h.challenge.choices } : undefined,
-  })).filter(Boolean);
-  const sceneIndex = history.length + 1;
-  const maxScenes = TARGET_SCENES;
-  const challengeSteps = CHALLENGE_STEPS.join(', ');
-  return `Tu es un Maître de Jeu IA. Poursuis l'aventure **structurée**.
+export function adventurePromptContinue(history: SceneNode[], choice: string, settings: Settings) {
+  const start = Math.max(0, history.length - 4);
+  const conciseHistory = history.slice(start).map((scene, index) => ({
+    scene: start + index + 1,
+    narration: scene.narration,
+    challenge: scene.challenge ? scene.challenge.question : undefined,
+    status: scene.status,
+  }));
+  const upcomingScene = history.length + 1;
+  const challenges = CHALLENGE_STEPS.join(', ');
 
-Contexte (5 dernières scènes max):
-${JSON.stringify(context)}
+  return `You are an interactive storyteller AI. Continue a French-language narrative capped at ${TARGET_SCENES} scenes. Scenes ${challenges} must be challenge scenes. Scene ${FINAL_SCENE} must conclude the story with status "win" or "loss".
 
-Entrée joueur: ${choice}
-Scène courante: ${sceneIndex} / ${maxScenes}
+Story parameters: genre=${settings.genre}, tone=${settings.ton}, POV=${settings.pov}, framing=${settings.cadre}.
 
-Règles NARRATIVES:
-- L'histoire vise ~${maxScenes} scènes.
-- Les scènes ${challengeSteps} sont des **épreuves**:
-  • Basées sur des éléments **introduits auparavant** (noms, indices, sigles, motifs, codes)
-  • OU un **détail visuel** à repérer dans l'image
-  • OU une **mini-énigme logique** liée à l'intrigue.
-- À la **dernière épreuve (${CHALLENGE_STEPS[CHALLENGE_STEPS.length-1]})**, prépare la **résolution**.
-- Termine l'histoire si le climax est atteint OU si scène >= ${maxScenes}.
+Recent French scenes:
+${JSON.stringify(conciseHistory)}
 
-FORMAT DE SORTIE (JSON strict, sans commentaire) — choisis **exactement un** des deux schémas :
-1) Scène classique (si pas une épreuve):
-{ "narration": string (2–5 phrases, <=120 mots), "options": [ string, string, string ], "status": "ongoing" }
-2) Scène d'épreuve (si scèneIndex ∈ {${challengeSteps}}):
-{ "narration": string (2–4 phrases, <=100 mots), "options": [], "status": "ongoing",
-  "challenge": { "question": string, "choices": [ string, string, string ], "answerIndex": 0|1|2 }
-}
+Last player choice (French): ${choice}
+Upcoming scene index: ${upcomingScene} of ${TARGET_SCENES}
 
-SI l'histoire DOIT FINIR (après la réponse à la dernière épreuve) :
-{ "narration": string (2–5 phrases), "options": [], "status": "success"|"failure"|"end", "endingTitle"?: string }
+Rules:
+- Produce French text only (narration, questions, options).
+- If scene ${upcomingScene} is a challenge scene (${challenges}), return JSON:
+  { "narration": "2-3 French sentences", "challenge": { "question": "French riddle based on previous clues", "choices": ["...", "...", "..."] }, "status": "ongoing" }
+- If scene ${upcomingScene} < ${FINAL_SCENE} and not a challenge, return JSON:
+  { "narration": "2-4 French sentences", "options": ["option 1", "option 2", "option 3"], "status": "ongoing" }
+- If scene ${upcomingScene} === ${FINAL_SCENE}, return JSON:
+  { "narration": "French resolution (2-4 sentences)", "endingTitle": "Short French title", "status": "win"|"loss" }
+- Do not return options or a challenge in the ending.
 
-Interdit: texte incrusté dans l'image, contenus non SFW. Langue: français.`;
+Return JSON strictly, no commentary.`;
 }

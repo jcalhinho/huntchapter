@@ -1,16 +1,17 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
-import type { Transition } from 'framer-motion';
+import type { Transition, Variants } from 'framer-motion';
 import LoadingGlyph from './components/LoadingGlyph';
 import MagicButton from './components/MagicButton';
 import WordCloud from './components/WordCloud';
+import MagicCursor from './components/MagicCursor';
 import { useGameStore } from './state/gameStore';
-import { page, rightPane, topbar, bottombar, card, btn } from './styles/ui';
+import { page, rightPane, topbar, bottombar, card, btn, contentWrap } from './styles/ui';
 
-const cardVariants = {
-  initial: { opacity: 0, y: 40, scale: 0.95, rotateX: 8, filter: 'blur(8px)' as any },
-  animate: { opacity: 1, y: 0, scale: 1, rotateX: 0, filter: 'blur(0px)' as any },
-  exit:    { opacity: 0, y: -40, scale: 0.96, rotateX: -6, filter: 'blur(8px)' as any },
+const cardVariants: Variants = {
+  initial: { opacity: 0, y: 40, scale: 0.95, rotateX: 8, filter: 'blur(8px)' },
+  animate: { opacity: 1, y: 0, scale: 1, rotateX: 0, filter: 'blur(0px)' },
+  exit: { opacity: 0, y: -40, scale: 0.96, rotateX: -6, filter: 'blur(8px)' },
 };
 const cardTransition: Transition = { type: 'spring', stiffness: 120, damping: 18, mass: 0.9 };
 
@@ -37,37 +38,43 @@ export default function App() {
   };
 
   return (
+    <>
+    <MagicCursor />
     <div style={page}>
-      <div style={rightPane}>
-        <div style={topbar}>
-          <div>HuntChapter</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            
-            {started && <button style={{...btn, padding: '6px 10px'}} onClick={reset}>↺ Recommencer</button>}
+        <div style={rightPane}>
+          <div style={topbar}>
+            <div>HuntChapter</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              {started && (
+                <button
+                  style={{ ...btn, padding: '6px 10px' }}
+                  onClick={reset}
+                >
+                  ↺ Recommencer
+                </button>
+              )}
+            </div>
           </div>
-        </div>
 
+        <div style={contentWrap}>
         <div style={{ position: 'relative', flex: 1, display: 'grid', placeItems: 'center' }}>
           <AnimatePresence mode="wait">
             {!started ? (
               <motion.div key="intro" variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, width: '100%', maxWidth: '800px', transformPerspective: 1000 }}>
-                <h1 style={{ textAlign: 'center', margin: 0, fontWeight: 700 }}>Créez votre histoire</h1>
-                <p style={{ opacity: 0.85, textAlign: 'center', marginTop: 8, marginBottom: 20 }}>Cliquez sur 6 mots dans le nuage pour commencer.</p>
-                {/* Le nouveau composant WordCloud sera inséré ici */}
                 <WordCloud onSubmit={handleStartGame} loading={loading} />
                 {error && <p style={{ color: '#ffb3b3', textAlign: 'center' }}>⚠️ {error}</p>}
               </motion.div>
             ) : (
               <motion.div key={activeScene?.id || 'scene'} variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, transformPerspective: 1000 }}>
                 {activeScene?.img && (
-                  <div style={{ aspectRatio: '16 / 9', background: '#0b0b0f', borderRadius: 12, overflow: 'hidden', marginBottom: 12, border: '1px solid #1c2230' }}>
-                    <img src={activeScene.img} alt="Illustration de la scène" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  <div style={{ aspectRatio: '1 / 1', background: '#0b0b0f', borderRadius: 12, overflow: 'hidden', marginBottom: 12, border: '1px solid #1c2230', maxHeight: '30vh', width: '100%' }}>
+                    <img src={activeScene.img} alt="Illustration de la scène" style={{ width: 'auto', height: '100%', objectFit: 'cover', display: 'block', margin: '0 auto' }} />
                   </div>
                 )}
                 {loading ? (
                   <>
                     <LoadingGlyph />
-                    <p style={{ opacity: 0.8, textAlign: 'center', margin: 0 }}>Le Maître de Jeu tisse le destin…</p>
+                    <p style={{ opacity: 0.8, textAlign: 'center', margin: 0 }}>Le destin se tisse…</p>
                   </>
                 ) : (
                   <>
@@ -111,7 +118,9 @@ export default function App() {
         <div style={bottombar}>
          
         </div>
+        </div>
       </div>
     </div>
+    </>
   );
 }

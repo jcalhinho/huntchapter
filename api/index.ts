@@ -7,13 +7,32 @@ import crypto from 'crypto';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { z } from 'zod';
-import { PrologueSchema, SceneSchema, AnySceneSchema } from './schemas.js';
+import { PrologueSchema, AnySceneSchema } from './schemas.js';
+import { STORY_CONFIG } from './storyConfig.js';
 
 // ES module-safe way to get __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: 'api/.env' });
 const GAMES_FILE_PATH = path.join(__dirname, 'games.json');
+const IMAGE_STYLES = [
+  'Blade Runner inspired neon noir with volumetric light',
+  'Studio Ghibli watercolor softness with warm palettes',
+  'Moody chiaroscuro oil painting with textured brush strokes',
+  'Retrofuturistic synthwave gradients with sharp rim lights',
+  'Illustrated dark fantasy etching with metallic highlights',
+  'High-contrast monochrome photography with subtle grain',
+  '1970s cosmic pulp cover art with bold halftones',
+  'Cyberpunk rain-soaked alley in anamorphic cinema lighting',
+  'Minimalist mid-century modern collage with geometric blocks',
+  'Baroque gilded canvas with dramatic drapery and candle glow',
+  'Dreamy pastel vaporwave cityscape with mirrored reflections',
+  'Ink-and-wash East Asian landscape with misty mountains',
+  'Retro RPG pixel art with soft dithering and limited palette',
+  'Noir graphic novel style with white ink on dark paper',
+  'Vivid sci-fi concept art with lens flares and depth haze',
+  'Surreal double exposure photography blending forest and faces'
+] as const;
 
 // --- TYPES ---
 type Scene = z.infer<typeof AnySceneSchema> & { id: string; img?: string; };
@@ -21,6 +40,7 @@ type GameSession = {
   id: string;
   history: (Scene | { id: string; narration: string; status: 'ongoing' })[];
   params: { genre: string; ton: string; pov: string; cadre: string; };
+  imageStyle?: string;
 }
 type GeminiImageResponse = {
   candidates?: Array<{ content?: { parts?: [{ inlineData?: { data: string } }] } }>;
@@ -29,6 +49,7 @@ type GeminiImageResponse = {
 
 // --- IN-MEMORY STORAGE & PERSISTENCE ---
 let games = new Map<string, GameSession>();
+const { TARGET_SCENES, CHALLENGE_SCENES, FINAL_SCENE } = STORY_CONFIG;
 
 async function saveGames() {
   const data = JSON.stringify(Array.from(games.entries()), null, 2);
@@ -61,8 +82,8 @@ if (!GEMINI_API_KEY) {
   process.exit(1);
 }
 
-async function generateText<T extends z.ZodType<any, any>>(prompt: string, schema: T, maxRetries = 2): Promise<z.infer<T>> {
-  let lastError: any = null;
+async function generateText<T extends z.ZodType>(prompt: string, schema: T, maxRetries = 2): Promise<z.infer<T>> {
+  let lastError: unknown = null;
   for (let i = 0; i < maxRetries; i++) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
@@ -115,8 +136,8 @@ async function generateImage(prompt: string): Promise<string | undefined> {
       body: JSON.stringify({
         contents: [{
           parts: [
-            { text: `Generate a high-quality, cinematic image that illustrates the following scene: ${prompt}` },
-            { text: "Output a single part with the image's raw data, no JSON." }
+            { text: `Create a square illustration with a strict 1:1 aspect ratio at roughly 512x512 resolution, cinematic lighting, and clean framing. Avoid overlaid text or logos. Depict the following scene description (narrative in French, image language-agnostic): ${prompt}` },
+            { text: 'Return a single part containing only the raw image data (no JSON).' }
           ]
         }]
       }),
@@ -163,16 +184,19 @@ app.post('/api/game', async (req, res) => {
     }
 
     const gameId = crypto.randomUUID();
+    const imageStyle = IMAGE_STYLES[Math.floor(Math.random() * IMAGE_STYLES.length)];
     const gameParams = { genre, ton, pov, cadre };
 
-    const prologuePrompt = `Génère le prologue d'une histoire interactive. Genre: ${genre}, Ton: ${ton}, Point de vue: ${pov}, Cadre: ${cadre}. Le prologue doit planter le décor et se terminer juste avant le premier choix du joueur. Réponds uniquement avec un JSON respectant ce schema: { "narration": "string" }`;
+    const challengeSummary = CHALLENGE_SCENES.map((step) => `scene ${step}`).join(' and ');
+    const prologuePrompt = `You are an interactive storytelling AI. Write a French-language prologue for a ${TARGET_SCENES}-scene adventure (scenes 1-${FINAL_SCENE}). Scenes ${challengeSummary} will be challenge scenes, and scene ${FINAL_SCENE} must deliver the ending. Use the following parameters: genre=${genre}, tone=${ton}, point of view=${pov}, framing="${cadre}". Craft 2-4 French sentences that set the stage and stop immediately before the first decision. Return JSON only: { "narration": "<French text>" }.`;
     const prologueResult = await generateText(prologuePrompt, PrologueSchema);
 
-    const firstChoicesPrompt = `Voici le début d'une histoire : ${prologueResult.narration}. Propose 3 options de suite pour le joueur. Réponds uniquement avec un JSON respectant ce schema: { "options": ["choix1", "choix2", "choix3"] }`;
+    const firstChoicesPrompt = `Using the following French prologue: "${prologueResult.narration}", propose exactly three concise French options for the player's first decision. Return JSON: { "options": ["option 1", "option 2", "option 3"] }. All options must be in French.`;
     const OptionsSchema = z.object({ options: z.array(z.string()).length(3) });
     const firstChoicesResult = await generateText(firstChoicesPrompt, OptionsSchema);
 
-    const imagePrompt = `Style: ${gameParams.ton}, ${gameParams.genre}. Scene: ${prologueResult.narration.substring(0, 300)}`;
+    const sanitizedPrologue = prologueResult.narration.replace(/\s+/g, ' ').slice(0, 360);
+    const imagePrompt = `${imageStyle}. Genre ${gameParams.genre}, tone ${gameParams.ton}. French scene summary: ${sanitizedPrologue}. POV ${gameParams.pov}.`;
     const imageUrl = await generateImage(imagePrompt);
 
     const firstScene: Scene = {
@@ -187,6 +211,7 @@ app.post('/api/game', async (req, res) => {
       id: gameId,
       params: gameParams,
       history: [firstScene],
+      imageStyle,
     };
     games.set(gameId, newGame);
     await saveGames();
@@ -211,15 +236,77 @@ app.post('/api/game/:id/choice', async (req, res) => {
             return res.status(404).json({ error: 'Game not found' });
         }
 
+        if (!game.imageStyle) {
+            game.imageStyle = IMAGE_STYLES[Math.floor(Math.random() * IMAGE_STYLES.length)];
+        }
+
+        const scenesOnly = game.history.filter(entry => !entry.narration.startsWith('>'));
+        const lastScene = scenesOnly[scenesOnly.length - 1];
+
+        if (!lastScene) {
+            return res.status(400).json({ error: 'No scene history available for this game.' });
+        }
+
+        if (lastScene.status !== 'ongoing' || scenesOnly.length >= FINAL_SCENE) {
+            return res.status(400).json({ error: 'The story has already reached its conclusion.' });
+        }
+
+        const nextSceneIndex = scenesOnly.length + 1;
+        const challengeSet = new Set<number>(CHALLENGE_SCENES as readonly number[]);
+        const isChallengeScene = challengeSet.has(nextSceneIndex);
+        const isFinalScene = nextSceneIndex === FINAL_SCENE;
+
         const userChoice = { id: crypto.randomUUID(), narration: `> ${choice}`, status: 'ongoing' as const };
         game.history.push(userChoice);
 
-        const context = game.history.map(s => s.narration).join('\n\n');
-        const nextScenePrompt = `Voici le contexte de l'histoire: ${JSON.stringify(game.params)}. Voici l'historique des événements: \n${context}\n\nGénère la prochaine scène. L'histoire doit continuer logiquement. Réponds uniquement avec un JSON respectant l'un de ces schemas: { "narration": "string", "options": ["choix1", "choix2", "choix3"], "status": "ongoing" } OU { "narration": "string", "challenge": { "question": "string", "choices": ["c1", "c2"] }, "status": "ongoing" } OU { "narration": "string", "endingTitle": "string", "status": "win" | "loss" }.`;
+        const startIndex = Math.max(0, scenesOnly.length - 4);
+        const recentScenes = scenesOnly.slice(startIndex).map((scene, idx) => ({
+            scene: startIndex + idx + 1,
+            narration: scene.narration,
+            status: scene.status,
+            challenge: 'challenge' in scene ? scene.challenge?.question : undefined,
+            options: 'options' in scene ? scene.options : undefined,
+        }));
+
+        const challengeSummary = CHALLENGE_SCENES.map((step) => `scene ${step}`).join(' and ');
+        const promptHeader = `You are an interactive storytelling AI. Continue a French-language adventure that is capped at ${TARGET_SCENES} scenes. Challenge scenes must occur at ${challengeSummary}. The finale happens at scene ${FINAL_SCENE} with status "win" or "loss".`;
+        const contextBlock = JSON.stringify(recentScenes, null, 2);
+
+        let outputInstruction: string;
+        if (isFinalScene) {
+            outputInstruction = `Scene ${nextSceneIndex} is the finale. Return JSON {"narration": "2-4 French sentences resolving the plot", "endingTitle": "Short French title", "status": "win"|"loss"}. Do NOT include options or a challenge.`;
+        } else if (isChallengeScene) {
+            outputInstruction = `Scene ${nextSceneIndex} is a challenge. Return JSON {"narration": "2-3 French sentences", "challenge": {"question": "French puzzle using previously introduced clues", "choices": ["choix A", "choix B", "choix C"]}, "status": "ongoing"}. Do NOT include options.`;
+        } else {
+            outputInstruction = `Scene ${nextSceneIndex} is a normal decision moment. Return JSON {"narration": "2-4 French sentences", "options": ["option 1", "option 2", "option 3"], "status": "ongoing"}.`;
+        }
+
+        const nextScenePrompt = `${promptHeader}
+
+Story parameters: genre="${game.params.genre}", tone="${game.params.ton}", POV="${game.params.pov}", framing="${game.params.cadre}".
+
+Recent French scenes (oldest to newest):
+${contextBlock}
+
+Latest player choice (French): "${choice}"
+You must now produce scene ${nextSceneIndex} of ${TARGET_SCENES}.
+
+${outputInstruction}
+
+General rules:
+- All narration, questions, options, and titles must be in French (<=120 words).
+- Challenge questions must reference clues or elements already established.
+- Do not end the story before scene ${FINAL_SCENE}.
+- Return STRICT JSON with no commentary.`;
 
         const nextSceneResult = await generateText(nextScenePrompt, AnySceneSchema);
 
-        const imagePrompt = `Style: ${game.params.ton}, ${game.params.genre}. Scene: ${nextSceneResult.narration.substring(0, 200)}`;
+        if (isFinalScene && nextSceneResult.status === 'ongoing') {
+            throw new Error(`Expected an ending at scene ${FINAL_SCENE}, but received status "ongoing".`);
+        }
+
+        const sceneSummary = nextSceneResult.narration.replace(/\s+/g, ' ').slice(0, 360);
+        const imagePrompt = `${game.imageStyle}. Genre ${game.params.genre}, tone ${game.params.ton}. Upcoming French scene summary: ${sceneSummary}.`;
         const imageUrl = await generateImage(imagePrompt);
 
         const newScene: Scene = {

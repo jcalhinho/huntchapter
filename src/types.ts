@@ -41,3 +41,22 @@ export interface GameStartResponse {
  * The response from the backend after a player makes a choice.
  */
 export type NewSceneResponse = Scene;
+
+/**
+ * Convenience aliases used by the prompt builders.
+ */
+export type SceneNode = Scene;
+export type Settings = GameStartParams;
+
+/**
+ * Global story pacing constraints shared by the UI prompt helpers.
+ */
+export const TARGET_SCENES = 6;
+export const CHALLENGE_STEPS = [3, 5] as const;
+export const FINAL_SCENE = 6;
+
+export const STORY_CONFIG = {
+  TARGET_SCENES,
+  CHALLENGE_STEPS,
+  FINAL_SCENE,
+} as const;

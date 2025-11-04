@@ -1,460 +1,496 @@
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence, useMotionValue, useTransform, MotionValue, useSpring, animate } from 'framer-motion';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { AnimatePresence, motion, useMotionValue, useSpring } from 'framer-motion';
+import type { PanInfo, MotionValue } from 'framer-motion';
 import MagicButton from './MagicButton';
 
-// --- CONFIGURATION ---
 const wordsList = [
   'Forêt', 'Château', 'Dragon', 'Magie', 'Trésor', 'Quête', 'Princesse', 'Chevalier', 'Épée',
   'Mystère', 'Nuit', 'Étoiles', 'Lune', 'Ombre', 'Secret', 'Destin', 'Courage', 'Peur',
   'Amour', 'Haine', 'Vengeance', 'Alliance', 'Trahison', 'Prophétie', 'Ancien', 'Artefact',
   'Créature', 'Royaume', 'Guerre', 'Paix', 'Honneur', 'Gloire', 'Ruines', 'Savoir', 'Pouvoir',
   'Voyage', 'Temps', 'Portail', 'Île', 'Désert', 'Montagne', 'Océan', 'Rivière', 'Cité',
-  'Légende', 'Mythe', 'Héros', 'Monstre', 'Dieu', 'Esprit'
+  'Légende', 'Mythe', 'Héros', 'Monstre', 'Dieu', 'Esprit','Rituel', 'Cauchemar', 'Tombeau', 'Reliques', 'Abysses', 'Malédiction', 'Sanctuaire', 'Oracle', 'Vision', 'Sépulcre',
+  'Corruption', 'Ténèbres', 'Lumière', 'Sang', 'Pacte', 'Énigme', 'Labyrinthe', 'Hurlement', 'Chuchotement', 'Spectre',
+  'Nécromancien', 'Alchimie', 'Runes', 'Arcanes', 'Inquisiteur', 'Révélation', 'Crépuscule', 'Aube', 'Éclipse', 'Faille',
+  'Souterrain', 'Catacombes', 'Fantôme', 'Ombres', 'Gardiens', 'Veilleur', 'Effroi', 'Folie', 'Serment', 'Trône',
+  'Bannière', 'Conjuration', 'Invocation', 'Dague', 'Poison', 'Clairvoyance', 'Prophète', 'Vestiges', 'Grimoire', 'Obélisque',
 ];
-const shuffledWords = wordsList.sort(() => 0.5 - Math.random()).slice(0, 30);
 
+const MAX_SELECTION = 6;
 const DROP_ZONE_HEIGHT = 110;
+const MOBILE_BREAKPOINT = 768;
 
-// --- STYLES ---
-const styles: { [key: string]: React.CSSProperties } = {
+const styles: Record<string, CSSProperties> = {
   wrapper: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: '20px',
+    gap: 20,
+    width: '100%',
   },
   container: {
-    width: '100%',
-    height: 400,
+    width: 'min(100%, 960px)',
+    minHeight: 420,
     position: 'relative',
-    border: '1px solid #1c2230',
-    background: '#ffffff',
-    borderRadius: 12,
+    border: 'none',
+    background: 'transparent',
+    borderRadius: 20,
     padding: 0,
     boxSizing: 'border-box',
-    overflow: 'hidden',
-    cursor: 'pointer',
-    perspective: '800px',
+    overflow: 'visible',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 18,
   },
   wordsLayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: DROP_ZONE_HEIGHT,
-    padding: '20px 16px 12px',
+    width: '100%',
+    padding: '16px 10px 4px',
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
     gridAutoRows: 'minmax(34px, auto)',
-    gap: '8px 14px',
+    gap: '14px clamp(10px, 4vw, 28px)',
     boxSizing: 'border-box',
-    overflow: 'hidden',
     alignContent: 'start',
     zIndex: 2,
+    overflow: 'visible',
+    flex: '0 0 auto',
   },
   word: {
-    padding: '6px 12px',
+    padding: '8px 12px',
     margin: 0,
-    color: '#111', // Dark text for contrast
-    background: 'white', // Card-like background
-    borderRadius: '8px',
+    color: '#f5f7ff',
+    background: 'transparent',
+    borderRadius: 16,
     cursor: 'grab',
-    fontSize: '16px',
     userSelect: 'none',
     position: 'relative',
-    boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+    fontSize: 'clamp(12px, 2.4vw, 16px)',
+    fontWeight: 500,
+    border: 'none',
+    boxShadow: '0 6px 18px rgba(255,255,255,0.2)',
+    touchAction: 'none',
+    transformStyle: 'preserve-3d',
+    transformPerspective: 700,
+    willChange: 'transform',
+    textAlign: 'center',
   },
   dropZone: {
-    position: 'absolute',
-    left: 0,
-    bottom: 0,
     width: '100%',
-    height: DROP_ZONE_HEIGHT,
-    padding: '18px 24px 16px',
+    minHeight: DROP_ZONE_HEIGHT,
+    padding: '16px 18px',
     boxSizing: 'border-box',
-    borderTop: '1px dashed #1c2230',
-    background: 'rgba(12, 16, 24, 0.85)',
+    background: 'transparent',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '10px',
-    color: '#c5d1ff',
+    gap: 12,
+    color: '#f5f7ff',
     zIndex: 1,
+    borderRadius: 18,
+    boxShadow: 'inset 0 0 28px rgba(255,255,255,0.12)',
+    transition: 'box-shadow 0.2s ease',
   },
   dropZoneHover: {
-    borderTopColor: '#61dafb',
-    background: 'rgba(20, 32, 52, 0.92)',
+    boxShadow: '0 0 28px rgba(255,255,255,0.25), inset 0 0 28px rgba(255,255,255,0.2)',
+  },
+  dropZoneWords: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'center',
   },
   selectedWordPill: {
-    padding: '4px 10px',
+    padding: '5px 12px',
     background: '#1c2230',
     color: '#61dafb',
-    borderRadius: '6px',
-    fontSize: '14px',
+    borderRadius: 8,
+    fontSize: 14,
   },
 };
 
-// --- ANIMATION VARIANTS ---
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1 },
-  exit: { scale: 0.9, opacity: 0, transition: { duration: 0.3 } },
+  exit: { scale: 0.92, opacity: 0, transition: { duration: 0.3 } },
 };
 
-// --- WORD COMPONENT ---
+const isPointInside = (point: PanInfo['point'], rect?: DOMRect | null) => {
+  if (!point || !rect) return false;
+  return (
+    point.x >= rect.left &&
+    point.x <= rect.right &&
+    point.y >= rect.top &&
+    point.y <= rect.bottom
+  );
+};
+
+type WordOrigin = 'cloud' | 'drop';
+
+type WordProps = {
+  text: string;
+  origin: WordOrigin;
+  containerRef: React.RefObject<HTMLDivElement>;
+  dropZoneRef: React.RefObject<HTMLDivElement>;
+  cloudRef: React.RefObject<HTMLDivElement>;
+  canDrop: boolean;
+  onMoveToDrop: () => void;
+  onMoveToCloud: () => void;
+  onDragStateChange: (dragging: boolean) => void;
+  onDropHoverChange: (hover: boolean) => void;
+  mouseX: MotionValue<number>;
+  mouseY: MotionValue<number>;
+  pointerActive: boolean;
+  compact: boolean;
+};
+
 const Word = ({
-  children,
-  onDrop,
+  text,
+  origin,
+  containerRef,
+  dropZoneRef,
+  cloudRef,
+  canDrop,
+  onMoveToDrop,
+  onMoveToCloud,
+  onDragStateChange,
+  onDropHoverChange,
   mouseX,
   mouseY,
-  containerRef,
-  anyHovered,
-  onHoverStartProp,
-  onHoverEndProp,
-  onDragStateChange,
-  onDropZoneHover,
-}: {
-  children: string;
-  onDrop: () => void;
-  mouseX: MotionValue;
-  mouseY: MotionValue;
-  containerRef: React.RefObject<HTMLDivElement>;
-  anyHovered: boolean;
-  onHoverStartProp: () => void;
-  onHoverEndProp: () => void;
-  onDragStateChange: (dragging: boolean) => void;
-  onDropZoneHover: (hover: boolean) => void;
-}) => {
+  pointerActive,
+  compact,
+}: WordProps) => {
+  const [dragging, setDragging] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const [hovered, setHovered] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [floating, setFloating] = useState(false);
-  const originRef = useRef<{ left: number; top: number; width: number; height: number } | null>(null);
-  const constraintsRef = useRef<{ top: number; left: number; right: number; bottom: number } | null>(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const dropTriggeredRef = useRef(false);
+  const dragEnabled = !compact;
 
-  // Cache the word center relative to the container at mount (and when layout changes)
-  const wordCenter = useRef<{ x: number; y: number } | null>(null);
-
-  const updateWordCenter = () => {
-    if (!ref.current || !containerRef.current) return;
-    const wordRect = ref.current.getBoundingClientRect();
-    const contRect = containerRef.current.getBoundingClientRect();
-    wordCenter.current = {
-      x: wordRect.left - contRect.left + wordRect.width / 2,
-      y: wordRect.top - contRect.top + wordRect.height / 2,
-    };
-  };
+  const tiltX = useSpring(0, { stiffness: 220, damping: 24, mass: 0.6 });
+  const tiltY = useSpring(0, { stiffness: 220, damping: 24, mass: 0.6 });
+  const MAX_TILT = 32;
 
   useEffect(() => {
-    updateWordCenter();
-    // Recompute on resize:
-    const onResize = () => updateWordCenter();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
+    if (!containerRef.current || !ref.current) return;
 
-  // Map mouseX/mouseY (viewport) -> container-relative, then compute angle-based rotation (atan2) with distance falloff
-  const rotateX = useTransform(mouseY, (mouseViewY) => {
-    if (!containerRef.current || !wordCenter.current) return 0;
-    if (hovered) return 0;
-    const contRect = containerRef.current.getBoundingClientRect();
-    const my = mouseViewY - contRect.top;
-    const dy = my - wordCenter.current.y;
-    const mx = (mouseX.get() ?? 0) - contRect.left;
-    const dx = mx - wordCenter.current.x;
-    const dist = Math.hypot(dx, dy);
-    const R = 160;
-    const t = 1 - dist / R;
-    let influence = t > 0 ? Math.pow(t, 2.0) : 0;
-    // Boost neighbors responsiveness when any word is hovered
-    if (anyHovered) influence = Math.min(1, influence * 2.0);
-    const angle = Math.atan2(dy, dx); // radians
-    const maxDeg = 42;
-    const base = Math.sin(angle) * maxDeg; // X tilt from vertical component
-    return base * influence;
-  });
+    const update = () => {
+      if (!containerRef.current || !ref.current) return;
 
-  const rotateY = useTransform(mouseX, (mouseViewX) => {
-    if (!containerRef.current || !wordCenter.current) return 0;
-    if (hovered) return 0;
-    const contRect = containerRef.current.getBoundingClientRect();
-    const mx = mouseViewX - contRect.left;
-    const dx = mx - wordCenter.current.x;
-    const my = (mouseY.get() ?? 0) - contRect.top;
-    const dy = my - wordCenter.current.y;
-    const dist = Math.hypot(dx, dy);
-    const R = 160;
-    const t = 1 - dist / R;
-    let influence = t > 0 ? Math.pow(t, 2.0) : 0;
-    if (anyHovered) influence = Math.min(1, influence * 2.0);
-    const angle = Math.atan2(dy, dx);
-    const maxDeg = 42;
-    const base = Math.cos(angle) * maxDeg; // Y tilt from horizontal component
-    return base * influence;
-  });
+      if (!pointerActive || dragging) {
+        tiltX.set(0);
+        tiltY.set(0);
+        return;
+      }
 
-  const checkDropOverlap = () => {
-    if (dropTriggeredRef.current) return;
-    const dropZone = document.getElementById('drop-zone');
-    if (!dropZone || !ref.current) return;
-    const dropRect = dropZone.getBoundingClientRect();
-    const wordRect = ref.current.getBoundingClientRect();
-    const overlaps = wordRect.left < dropRect.right && wordRect.right > dropRect.left && wordRect.top < dropRect.bottom && wordRect.bottom > dropRect.top;
-    onDropZoneHover(overlaps);
-    if (overlaps) {
-      dropTriggeredRef.current = true;
-      onDropZoneHover(false);
-      onDrop();
-      onHoverEndProp();
-      x.stop();
-      y.stop();
-      x.set(0);
-      y.set(0);
-      setFloating(false);
-      setIsDragging(false);
-      onDragStateChange(false);
-      originRef.current = null;
-      constraintsRef.current = null;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const wordRect = ref.current.getBoundingClientRect();
+      const pointerX = mouseX.get();
+      const pointerY = mouseY.get();
+      const wordCenterX = wordRect.left - containerRect.left + wordRect.width / 2;
+      const wordCenterY = wordRect.top - containerRect.top + wordRect.height / 2;
+      const dx = pointerX - wordCenterX;
+      const dy = pointerY - wordCenterY;
+      const dist = Math.hypot(dx, dy);
+      const maxDist = 200;
+      const influence = Math.max(0, 1 - dist / maxDist);
+      const eased = Math.pow(influence, 0.6);
+
+      tiltY.set((dx / Math.max(1, maxDist)) * MAX_TILT * 2.4 * eased);
+      tiltX.set((-dy / Math.max(1, maxDist)) * MAX_TILT * 2.4 * eased);
+    };
+
+    const unsubX = mouseX.on('change', update);
+    const unsubY = mouseY.on('change', update);
+    update();
+
+    return () => {
+      unsubX();
+      unsubY();
+    };
+  }, [mouseX, mouseY, pointerActive, containerRef, dragging, tiltX, tiltY]);
+
+  useEffect(() => {
+    if (!pointerActive || dragging) {
+      tiltX.set(0);
+      tiltY.set(0);
+    }
+  }, [pointerActive, dragging, tiltX, tiltY]);
+
+  const handleDrag = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (!dragEnabled || origin !== 'cloud') return;
+    const dropRect = dropZoneRef.current?.getBoundingClientRect();
+    const isOverDrop = canDrop && isPointInside(info.point, dropRect);
+    onDropHoverChange(isOverDrop);
+  };
+
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (!dragEnabled) return;
+    onDragStateChange(false);
+    onDropHoverChange(false);
+    setDragging(false);
+    tiltX.set(0);
+    tiltY.set(0);
+
+    const point = info.point;
+    if (!point) return;
+
+    if (origin === 'cloud') {
+      if (canDrop && isPointInside(point, dropZoneRef.current?.getBoundingClientRect())) {
+        onMoveToDrop();
+      }
+    } else if (isPointInside(point, cloudRef.current?.getBoundingClientRect())) {
+      onMoveToCloud();
     }
   };
 
-  useEffect(() => {
-    if (!floating) return;
-    const unsubX = x.on('change', checkDropOverlap);
-    const unsubY = y.on('change', checkDropOverlap);
-    return () => {
-      unsubX && unsubX();
-      unsubY && unsubY();
-    };
-  }, [floating]);
-
-  const baseStyle = floating && originRef.current ? {
-    ...styles.word,
-    position: 'absolute' as const,
-    left: originRef.current.left,
-    top: originRef.current.top,
-    width: originRef.current.width,
-    height: originRef.current.height,
-    transformOrigin: 'center',
-    rotateX,
-    rotateY,
-    zIndex: 20,
-    x,
-    y,
-  } : {
-    ...styles.word,
-    transformOrigin: 'center',
-    rotateX,
-    rotateY,
-    zIndex: hovered || isDragging ? 10 : 1,
+  const handleTapSelect = () => {
+    if (!compact) return;
+    if (origin === 'cloud') {
+      if (canDrop) onMoveToDrop();
+    } else {
+      onMoveToCloud();
+    }
   };
 
   return (
     <motion.div
-      ref={ref}
-      style={baseStyle}
-      drag
-      dragMomentum={true}
-      dragElastic={0.25}
-      dragConstraints={floating ? constraintsRef.current ?? undefined : containerRef}
-      whileDrag={{ scale: 1.04 }}
-      onHoverStart={() => { setHovered(true); updateWordCenter(); onHoverStartProp(); }}
-      onHoverEnd={() => { setHovered(false); onHoverEndProp(); }}
-      onDragStart={() => {
-        setIsDragging(true);
-        dropTriggeredRef.current = false;
-        onDropZoneHover(false);
-        updateWordCenter();
-        if (ref.current && containerRef.current) {
-          const wordRect = ref.current.getBoundingClientRect();
-          const contRect = containerRef.current.getBoundingClientRect();
-          const origin = {
-            left: wordRect.left - contRect.left,
-            top: wordRect.top - contRect.top,
-            width: wordRect.width,
-            height: wordRect.height,
-          };
-          originRef.current = origin;
-          constraintsRef.current = {
-            left: -origin.left,
-            top: -origin.top,
-            right: contRect.width - origin.width - origin.left,
-            bottom: contRect.height - origin.height - origin.top,
-          };
-          x.set(0);
-          y.set(0);
-          setFloating(true);
-        }
+            ref={ref}
+          layout
+      drag={dragEnabled}
+      dragMomentum={dragEnabled ? false : undefined}
+      dragElastic={dragEnabled ? 0.25 : undefined}
+      dragSnapToOrigin={dragEnabled ? true : undefined}
+      dragConstraints={dragEnabled ? containerRef : undefined}
+      onDragStart={dragEnabled ? () => {
         onDragStateChange(true);
+        onDropHoverChange(false);
+        setDragging(true);
+        tiltX.set(0);
+        tiltY.set(0);
+      } : undefined}
+      onDrag={dragEnabled ? handleDrag : undefined}
+      onDragEnd={dragEnabled ? handleDragEnd : undefined}
+      whileHover={{ scale: 1.08 }}
+      whileTap={{ scale: 0.96 }}
+      whileDrag={{ scale: 1.04, boxShadow: '0 14px 32px rgba(255,255,255,0.3)', zIndex: 12 }}
+      transition={{ type: 'spring', stiffness: 480, damping: 32 }}
+      style={{
+        ...styles.word,
+        cursor: compact ? 'pointer' : 'grab',
+        touchAction: compact ? 'pan-y' : 'none',
+        rotateX: tiltX,
+        rotateY: tiltY,
       }}
-      onDrag={() => {
-        checkDropOverlap();
-      }}
-      onDragEnd={(event, info) => {
-        onDragStateChange(false);
-        setIsDragging(false);
-        if (dropTriggeredRef.current) return;
-        onDropZoneHover(false);
-
-        const finish = () => {
-          setFloating(false);
-          originRef.current = null;
-          constraintsRef.current = null;
-          onHoverEndProp();
-        };
-
-        const constraints = constraintsRef.current;
-        const ctrlX = animate(x, 0, {
-          type: 'inertia',
-          velocity: info.velocity.x,
-          power: 0.8,
-          timeConstant: 280,
-          bounceStiffness: 180,
-          bounceDamping: 26,
-          restDelta: 0.6,
-          min: constraints?.left,
-          max: constraints?.right,
-        });
-        const ctrlY = animate(y, 0, {
-          type: 'inertia',
-          velocity: info.velocity.y,
-          power: 0.8,
-          timeConstant: 280,
-          bounceStiffness: 180,
-          bounceDamping: 26,
-          restDelta: 0.6,
-          min: constraints?.top,
-          max: constraints?.bottom,
-        });
-
-        Promise.all([ctrlX.finished, ctrlY.finished]).finally(() => {
-          x.set(0);
-          y.set(0);
-          finish();
-        });
-      }}
-      whileHover={{ scale: 1.14, boxShadow: '0 14px 38px rgba(0,0,0,0.40)' }}
-      transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+      onClick={handleTapSelect}
     >
-      {children}
+      <span style={{ position: 'relative', zIndex: 1 }}>{text}</span>
     </motion.div>
   );
 };
 
-// --- DROP ZONE COMPONENT ---
-const DropZone = ({ active }: { active: boolean }) => {
-    const [isHovered, setIsHovered] = useState(false);
-    return (
-        <div
-            id="drop-zone"
-            style={{...styles.dropZone, ...((isHovered || active) ? styles.dropZoneHover : {})}}
-            onDragOver={(e) => { e.preventDefault(); setIsHovered(true); }}
-            onDragLeave={() => setIsHovered(false)}
-            onDrop={() => setIsHovered(false)}
-        >
-            <div style={{ fontWeight: 600, fontSize: 14 }}>Glissez vos mots ici</div>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>Zone de dépôt (4ᵉ quart)</div>
-        </div>
-    );
-}
-
-// --- MAIN COMPONENT ---
-export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: string[]) => void, loading: boolean }) {
+export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: string[]) => void; loading: boolean }) {
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [anyHovered, setAnyHovered] = useState(false);
   const [anyDragging, setAnyDragging] = useState(false);
   const [dropHover, setDropHover] = useState(false);
+  const [pointerActive, setPointerActive] = useState(false);
+  const [isCompact, setIsCompact] = useState(false);
 
-  const mouseXRaw = useMotionValue(typeof window !== "undefined" ? window.innerWidth / 2 : 0);
-  const mouseYRaw = useMotionValue(typeof window !== "undefined" ? window.innerHeight / 2 : 0);
-  // Smooth the cursor tracking like Framer's example (tracking the cursor)
-  const mouseX = useSpring(mouseXRaw, { stiffness: 300, damping: 30, mass: 0.6 });
-  const mouseY = useSpring(mouseYRaw, { stiffness: 300, damping: 30, mass: 0.6 });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cloudLayerRef = useRef<HTMLDivElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
 
-  function handleMouse(event: React.MouseEvent) {
-    mouseXRaw.set(event.clientX);
-    mouseYRaw.set(event.clientY);
-  };
+  useEffect(() => {
+    const checkViewport = () => {
+      setIsCompact(window.innerWidth <= MOBILE_BREAKPOINT);
+    };
+    checkViewport();
+    window.addEventListener('resize', checkViewport);
+    return () => window.removeEventListener('resize', checkViewport);
+  }, []);
+
+  useEffect(() => {
+    if (isCompact) {
+      setPointerActive(false);
+    }
+  }, [isCompact]);
+
+  const shuffledWords = useMemo(
+    () => [...wordsList].sort(() => Math.random() - 0.5).slice(0, 50),
+    [],
+  );
+
+  const cloudWords = useMemo(
+    () => shuffledWords.filter((word) => !selectedWords.includes(word)),
+    [shuffledWords, selectedWords],
+  );
 
   const handleWordDrop = (word: string) => {
-    if (selectedWords.length < 6 && !selectedWords.includes(word)) {
-      setSelectedWords(prev => [...prev, word]);
-    }
+    setSelectedWords((prev) => {
+      if (prev.length >= MAX_SELECTION || prev.includes(word)) {
+        return prev;
+      }
+      return [...prev, word];
+    });
+  };
+
+  const handleWordReturn = (word: string) => {
+    setSelectedWords((prev) => prev.filter((entry) => entry !== word));
   };
 
   const handleSubmit = () => {
-    if (selectedWords.length === 6 && !loading) {
+    if (selectedWords.length === MAX_SELECTION && !loading && !isSubmitting) {
       setIsSubmitting(true);
+      onSubmit([...selectedWords]);
     }
   };
 
-  const handleExitComplete = () => {
-    if (isSubmitting) {
-      onSubmit(selectedWords);
-    }
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    mouseX.set(event.clientX - rect.left);
+    mouseY.set(event.clientY - rect.top);
   };
+
+  const handlePointerEnter = (event: React.PointerEvent<HTMLDivElement>) => {
+    handlePointerMove(event);
+    setPointerActive(true);
+  };
+
+  const handlePointerLeave = () => {
+    setPointerActive(false);
+  };
+
+  const responsiveContainer = useMemo(() => ({
+    ...styles.container,
+    ...(isCompact ? {
+      height: 'calc(100dvh - 200px)',
+      maxHeight: 'calc(100dvh - 200px)',
+      width: '100%',
+    } : {}),
+  }), [isCompact]);
+
+  const responsiveWordsLayer = useMemo(() => ({
+    ...styles.wordsLayer,
+    ...(isCompact ? {
+      flex: 1,
+      overflowY: 'auto',
+      paddingBottom: 16,
+      overscrollBehavior: 'contain',
+      WebkitOverflowScrolling: 'touch' as const,
+    } : {}),
+  }), [isCompact]);
+
+  const responsiveDropZone = useMemo(() => ({
+    ...styles.dropZone,
+    ...(isCompact ? {
+      position: 'sticky' as const,
+      bottom: 0,
+    } : {}),
+  }), [isCompact]);
+
+  const instructionText = isCompact ? 'Touchez 6 mots ici' : 'Glissez 6 mots ici';
+  const helperTextPrefix = isCompact ? 'Touchez' : 'Glissez';
 
   return (
-    <AnimatePresence onExitComplete={handleExitComplete}>
+    <AnimatePresence>
       {!isSubmitting && (
-        <motion.div style={styles.wrapper} variants={containerVariants} initial="hidden" animate="visible" exit="exit">
+        <motion.div
+          style={styles.wrapper}
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+        >
           <motion.div
             ref={containerRef}
-            style={{ ...styles.container, overflow: anyDragging ? 'visible' : 'hidden' }}
-            onMouseMove={handleMouse}
+            style={{ ...responsiveContainer, overflow: anyDragging && !isCompact ? 'visible' : 'hidden' }}
+            onPointerMove={handlePointerMove}
+            onPointerEnter={handlePointerEnter}
+            onPointerLeave={handlePointerLeave}
           >
-            <div style={{ ...styles.wordsLayer, overflow: anyDragging ? 'visible' : styles.wordsLayer.overflow }}>
-              {shuffledWords.filter(w => !selectedWords.includes(w)).map(word => (
+            <div
+              ref={cloudLayerRef}
+              style={{
+                ...responsiveWordsLayer,
+                overflow: isCompact ? 'auto' : anyDragging ? 'visible' : styles.wordsLayer.overflow,
+              }}
+            >
+              {cloudWords.map((word) => (
                 <Word
                   key={word}
-                  onDrop={() => handleWordDrop(word)}
+                  text={word}
+                  origin="cloud"
+                  containerRef={containerRef}
+                  dropZoneRef={dropZoneRef}
+                  cloudRef={cloudLayerRef}
+                  canDrop={selectedWords.length < MAX_SELECTION}
+                  onMoveToDrop={() => handleWordDrop(word)}
+                  onMoveToCloud={() => {}}
+                  onDragStateChange={setAnyDragging}
+                  onDropHoverChange={setDropHover}
                   mouseX={mouseX}
                   mouseY={mouseY}
-                  containerRef={containerRef}
-                  anyHovered={anyHovered}
-                  onHoverStartProp={() => {
-                    setAnyHovered(true);
-                  }}
-                  onHoverEndProp={() => {
-                    setAnyHovered(false);
-                  }}
-                  onDragStateChange={(dragging) => setAnyDragging(dragging)}
-                  onDropZoneHover={setDropHover}
-                >
-                  {word}
-                </Word>
+                  pointerActive={pointerActive}
+                  compact={isCompact}
+                />
               ))}
             </div>
 
-            <DropZone active={dropHover} />
+            <div
+              ref={dropZoneRef}
+              style={{
+                ...responsiveDropZone,
+                ...(dropHover ? styles.dropZoneHover : {}),
+              }}
+            >
+              {selectedWords.length === 0 && (
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#f5f7ff' }}>{instructionText}</div>
+              )}
+
+              {selectedWords.length > 0 && (
+                <div style={{ fontSize: 12, opacity: 0.85, color: '#f5f7ff' }}>
+                  {selectedWords.length < MAX_SELECTION
+                    ? `${helperTextPrefix} encore ${MAX_SELECTION - selectedWords.length} mot${
+                        MAX_SELECTION - selectedWords.length !== 1 ? 's' : ''
+                      }.`
+                    : 'Sélection complète.'}
+                </div>
+              )}
+              <div style={styles.dropZoneWords}>
+                {selectedWords.map((word) => (
+                  <Word
+                    key={`drop-${word}`}
+                    text={word}
+                    origin="drop"
+                    containerRef={containerRef}
+                    dropZoneRef={dropZoneRef}
+                    cloudRef={cloudLayerRef}
+                    canDrop={true}
+                    onMoveToDrop={() => {}}
+                    onMoveToCloud={() => handleWordReturn(word)}
+                    onDragStateChange={setAnyDragging}
+                    onDropHoverChange={() => {}}
+                    mouseX={mouseX}
+                    mouseY={mouseY}
+                    pointerActive={pointerActive}
+                    compact={isCompact}
+                  />
+                ))}
+              </div>
+            </div>
           </motion.div>
 
           <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-            {selectedWords.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', maxWidth: '100%' }}>
-                {selectedWords.map(word => (
-                  <div key={word} style={styles.selectedWordPill}>{word}</div>
-                ))}
-              </div>
-            )}
-            <div style={{ fontSize: 12, opacity: 0.75 }}>
-              {selectedWords.length < 6 ? `Encore ${6 - selectedWords.length} mot${(6 - selectedWords.length) !== 1 ? 's' : ''} à sélectionner.` : 'Sélection complète.'}
-            </div>
             <AnimatePresence>
-              {selectedWords.length === 6 && (
+              {selectedWords.length === MAX_SELECTION && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
                 >
                   <MagicButton onClick={handleSubmit} disabled={loading}>
-                    {loading ? 'Création...' : 'Forger le destin'}
+                    {loading ? 'Création...' : 'commencez.'}
                   </MagicButton>
                 </motion.div>
               )}
