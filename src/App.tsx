@@ -57,7 +57,7 @@ export default function App() {
           </div>
 
         <div style={contentWrap}>
-        <div style={{ position: 'relative', flex: 1, display: 'grid', placeItems: 'center' }}>
+        <div style={{ position: 'relative',  flex: 1, display: 'grid', placeItems: 'center' }}>
           <AnimatePresence mode="wait">
             {!started ? (
               <motion.div key="intro" variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, width: '100%', maxWidth: '800px', transformPerspective: 1000 }}>
@@ -65,10 +65,25 @@ export default function App() {
                 {error && <p style={{ color: '#ffb3b3', textAlign: 'center' }}>⚠️ {error}</p>}
               </motion.div>
             ) : (
-              <motion.div key={activeScene?.id || 'scene'} variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, transformPerspective: 1000 }}>
+              <motion.div key={activeScene?.id || 'scene'} variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, transformPerspective: 1000 ,flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',justifyContent: 'center' }}>
                 {activeScene?.img && (
-                  <div style={{ aspectRatio: '1 / 1', background: '#0b0b0f', borderRadius: 12, overflow: 'hidden', marginBottom: 12, border: '1px solid #1c2230', maxHeight: '30vh', width: '100%' }}>
-                    <img src={activeScene.img} alt="Illustration de la scène" style={{ width: 'auto', height: '100%', objectFit: 'cover', display: 'block', margin: '0 auto' }} />
+                  <div
+                    style={{
+                      aspectRatio: '1 / 1',
+                      width: 'min(85vw, 520px)',
+                      maxHeight: 'min(55vh, 520px)',
+                      background: '#0b0b0f',
+                      borderRadius: 16,
+                      overflow: 'hidden',
+                      marginBottom: 18,
+                      border: '1px solid #1c2230',
+                    }}
+                  >
+                    <img
+                      src={activeScene.img}
+                      alt="Illustration de la scène"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
                   </div>
                 )}
                 {loading ? (

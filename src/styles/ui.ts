@@ -24,7 +24,7 @@ export const rightPane: React.CSSProperties = {
 export const topbar: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'space-between',
+  
   padding: 'env(safe-area-inset-top, 6px) clamp(16px, 4vw, 48px) 10px',
   borderBottom: '1px solid #1c2230',
   letterSpacing: 0.2,
@@ -33,9 +33,9 @@ export const topbar: React.CSSProperties = {
   zIndex: 20,
   background: 'rgba(11,11,15,0.8)',
   backdropFilter: 'blur(12px)',
-  minHeight: 40,
+  
   fontSize: 'clamp(14px, 2vw, 18px)',
-  width: '100%',
+  justifyContent: 'space-between',
 };
 
 export const bottombar: React.CSSProperties = {

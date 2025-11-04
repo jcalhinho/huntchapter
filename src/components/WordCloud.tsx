@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { AnimatePresence, motion, useMotionValue, useSpring } from 'framer-motion';
-import type { PanInfo, MotionValue } from 'framer-motion';
+import type { MotionValue } from 'framer-motion';
 import MagicButton from './MagicButton';
 
 const wordsList = [
@@ -115,54 +115,32 @@ const containerVariants = {
   exit: { scale: 0.92, opacity: 0, transition: { duration: 0.3 } },
 };
 
-const isPointInside = (point: PanInfo['point'], rect?: DOMRect | null) => {
-  if (!point || !rect) return false;
-  return (
-    point.x >= rect.left &&
-    point.x <= rect.right &&
-    point.y >= rect.top &&
-    point.y <= rect.bottom
-  );
-};
-
 type WordOrigin = 'cloud' | 'drop';
 
 type WordProps = {
   text: string;
   origin: WordOrigin;
-  containerRef: React.RefObject<HTMLDivElement>;
-  dropZoneRef: React.RefObject<HTMLDivElement>;
-  cloudRef: React.RefObject<HTMLDivElement>;
+  containerRef: RefObject<HTMLDivElement>;
   canDrop: boolean;
   onMoveToDrop: () => void;
   onMoveToCloud: () => void;
-  onDragStateChange: (dragging: boolean) => void;
-  onDropHoverChange: (hover: boolean) => void;
   mouseX: MotionValue<number>;
   mouseY: MotionValue<number>;
   pointerActive: boolean;
-  compact: boolean;
 };
 
 const Word = ({
   text,
   origin,
   containerRef,
-  dropZoneRef,
-  cloudRef,
   canDrop,
   onMoveToDrop,
   onMoveToCloud,
-  onDragStateChange,
-  onDropHoverChange,
   mouseX,
   mouseY,
   pointerActive,
-  compact,
 }: WordProps) => {
-  const [dragging, setDragging] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const dragEnabled = !compact;
 
   const tiltX = useSpring(0, { stiffness: 220, damping: 24, mass: 0.6 });
   const tiltY = useSpring(0, { stiffness: 220, damping: 24, mass: 0.6 });
@@ -174,7 +152,7 @@ const Word = ({
     const update = () => {
       if (!containerRef.current || !ref.current) return;
 
-      if (!pointerActive || dragging) {
+      if (!pointerActive) {
         tiltX.set(0);
         tiltY.set(0);
         return;
@@ -205,44 +183,9 @@ const Word = ({
       unsubX();
       unsubY();
     };
-  }, [mouseX, mouseY, pointerActive, containerRef, dragging, tiltX, tiltY]);
-
-  useEffect(() => {
-    if (!pointerActive || dragging) {
-      tiltX.set(0);
-      tiltY.set(0);
-    }
-  }, [pointerActive, dragging, tiltX, tiltY]);
-
-  const handleDrag = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    if (!dragEnabled || origin !== 'cloud') return;
-    const dropRect = dropZoneRef.current?.getBoundingClientRect();
-    const isOverDrop = canDrop && isPointInside(info.point, dropRect);
-    onDropHoverChange(isOverDrop);
-  };
-
-  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    if (!dragEnabled) return;
-    onDragStateChange(false);
-    onDropHoverChange(false);
-    setDragging(false);
-    tiltX.set(0);
-    tiltY.set(0);
-
-    const point = info.point;
-    if (!point) return;
-
-    if (origin === 'cloud') {
-      if (canDrop && isPointInside(point, dropZoneRef.current?.getBoundingClientRect())) {
-        onMoveToDrop();
-      }
-    } else if (isPointInside(point, cloudRef.current?.getBoundingClientRect())) {
-      onMoveToCloud();
-    }
-  };
+  }, [mouseX, mouseY, pointerActive, containerRef, tiltX, tiltY]);
 
   const handleTapSelect = () => {
-    if (!compact) return;
     if (origin === 'cloud') {
       if (canDrop) onMoveToDrop();
     } else {
@@ -254,28 +197,14 @@ const Word = ({
     <motion.div
             ref={ref}
           layout
-      drag={dragEnabled}
-      dragMomentum={dragEnabled ? false : undefined}
-      dragElastic={dragEnabled ? 0.25 : undefined}
-      dragSnapToOrigin={dragEnabled ? true : undefined}
-      dragConstraints={dragEnabled ? containerRef : undefined}
-      onDragStart={dragEnabled ? () => {
-        onDragStateChange(true);
-        onDropHoverChange(false);
-        setDragging(true);
-        tiltX.set(0);
-        tiltY.set(0);
-      } : undefined}
-      onDrag={dragEnabled ? handleDrag : undefined}
-      onDragEnd={dragEnabled ? handleDragEnd : undefined}
       whileHover={{ scale: 1.08 }}
       whileTap={{ scale: 0.96 }}
       whileDrag={{ scale: 1.04, boxShadow: '0 14px 32px rgba(255,255,255,0.3)', zIndex: 12 }}
       transition={{ type: 'spring', stiffness: 480, damping: 32 }}
       style={{
         ...styles.word,
-        cursor: compact ? 'pointer' : 'grab',
-        touchAction: compact ? 'pan-y' : 'none',
+        cursor: 'pointer',
+        touchAction: 'pan-y',
         rotateX: tiltX,
         rotateY: tiltY,
       }}
@@ -289,8 +218,6 @@ const Word = ({
 export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: string[]) => void; loading: boolean }) {
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [anyDragging, setAnyDragging] = useState(false);
-  const [dropHover, setDropHover] = useState(false);
   const [pointerActive, setPointerActive] = useState(false);
   const [isCompact, setIsCompact] = useState(false);
 
@@ -391,6 +318,7 @@ export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: str
 
   const instructionText = isCompact ? 'Touchez 6 mots ici' : 'Glissez 6 mots ici';
   const helperTextPrefix = isCompact ? 'Touchez' : 'Glissez';
+  const dropHover = selectedWords.length > 0 && selectedWords.length < MAX_SELECTION;
 
   return (
     <AnimatePresence>
@@ -404,7 +332,7 @@ export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: str
         >
           <motion.div
             ref={containerRef}
-            style={{ ...responsiveContainer, overflow: anyDragging && !isCompact ? 'visible' : 'hidden' }}
+            style={{ ...responsiveContainer, overflow: 'hidden' }}
             onPointerMove={handlePointerMove}
             onPointerEnter={handlePointerEnter}
             onPointerLeave={handlePointerLeave}
@@ -413,7 +341,7 @@ export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: str
               ref={cloudLayerRef}
               style={{
                 ...responsiveWordsLayer,
-                overflow: isCompact ? 'auto' : anyDragging ? 'visible' : styles.wordsLayer.overflow,
+                overflow: isCompact ? 'auto' : 'visible',
               }}
             >
               {cloudWords.map((word) => (
@@ -422,17 +350,12 @@ export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: str
                   text={word}
                   origin="cloud"
                   containerRef={containerRef}
-                  dropZoneRef={dropZoneRef}
-                  cloudRef={cloudLayerRef}
                   canDrop={selectedWords.length < MAX_SELECTION}
                   onMoveToDrop={() => handleWordDrop(word)}
                   onMoveToCloud={() => {}}
-                  onDragStateChange={setAnyDragging}
-                  onDropHoverChange={setDropHover}
                   mouseX={mouseX}
                   mouseY={mouseY}
                   pointerActive={pointerActive}
-                  compact={isCompact}
                 />
               ))}
             </div>
@@ -464,17 +387,12 @@ export default function WordCloud({ onSubmit, loading }: { onSubmit: (words: str
                     text={word}
                     origin="drop"
                     containerRef={containerRef}
-                    dropZoneRef={dropZoneRef}
-                    cloudRef={cloudLayerRef}
                     canDrop={true}
                     onMoveToDrop={() => {}}
                     onMoveToCloud={() => handleWordReturn(word)}
-                    onDragStateChange={setAnyDragging}
-                    onDropHoverChange={() => {}}
                     mouseX={mouseX}
                     mouseY={mouseY}
                     pointerActive={pointerActive}
-                    compact={isCompact}
                   />
                 ))}
               </div>
