@@ -1,40 +1,88 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
+import type React from 'react';
 import { AnimatePresence, motion, useMotionValue, useSpring } from 'framer-motion';
 import type { MotionValue } from 'framer-motion';
 import MagicButton from './MagicButton';
 import { UNIVERSES, type UniverseConfig } from '../lib/universes';
+import { CARD_BASE_HEIGHT, CARD_EXPANDED_HEIGHT, DROP_ZONE_HEIGHT, MAX_SELECTION, MOBILE_BREAKPOINT } from './wordcloud/config';
+import type { WordCloudStyles } from './wordcloud/types';
+import UniverseSelection from './wordcloud/UniverseSelection';
+import ImagePreview, { type PreviewImage } from './wordcloud/ImagePreview';
 
 export type WordCloudSubmit = { universeId: string; words: string[] };
 
-const MAX_SELECTION = 6;
-const DROP_ZONE_HEIGHT = 110;
-const MOBILE_BREAKPOINT = 768;
+const DEFAULT_ART = {
+  front: '/sf1.webp',
+  back: '/sf2.webp',
+};
 
-const styles: Record<string, CSSProperties> = {
+const UNIVERSE_ART: Record<string, { front: string; back: string }> = {
+  frontieres: {
+    front: '/sf1.webp',
+    back: '/sf2.webp',
+  },
+  arcanes: {
+    front: '/fanta1.webp',
+    back: '/fanta2.webp',
+  },
+  metropole: {
+    front: '/thri1.webp',
+    back: '/thri2.webp',
+  },
+  heritages: {
+    front: '/hist1.webp',
+    back: '/hist2.webp',
+  },
+};
+
+const styles: WordCloudStyles = {
   wrapper: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 20,
     width: '100%',
+    height: '100%',
+    minHeight: '100%',
+    flex: '1 1 auto',
+    padding: 'clamp(12px, 4vh, 36px) 0',
+  },
+  heroLogo: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    marginBottom: 12,
+  },
+  heroLogoImage: {
+    width: 'clamp(240px, 75vw, 900px)',
+    height: 'auto',
+    filter: 'drop-shadow(0 25px 60px rgba(8,12,24,0.65))',
   },
   container: {
-    width: 'min(100%, 960px)',
-    minHeight: 420,
+    width: '100%',
+    maxWidth: 1400,
     position: 'relative',
     border: 'none',
     background: 'transparent',
     borderRadius: 20,
-    padding: 0,
+    padding: '0 clamp(16px, 4vw, 36px)',
     boxSizing: 'border-box',
     overflow: 'visible',
     display: 'flex',
     flexDirection: 'column',
-    gap: 18,
+    justifyContent: 'center',
+    alignItems: 'stretch',
+    gap: 24,
+    flex: '1 1 auto',
+    minHeight: 420,
+    height: '100%',
+    margin: '0 auto',
   },
   wordsLayer: {
     width: '100%',
-    padding: '16px 10px 4px',
+    padding: '16px 10px 24px',
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
     gridAutoRows: 'minmax(34px, auto)',
@@ -46,29 +94,34 @@ const styles: Record<string, CSSProperties> = {
     flex: '0 0 auto',
   },
   word: {
-    padding: '8px 12px',
+    padding: '6px 10px',
     margin: 0,
     color: '#f5f7ff',
-    background: 'transparent',
+    background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.015) 70%, rgba(255,255,255,0) 100%)',
     borderRadius: 16,
     cursor: 'grab',
     userSelect: 'none',
     position: 'relative',
-    fontSize: 'clamp(12px, 2.4vw, 16px)',
+    fontSize: 'clamp(10px, 1.8vw, 12px)',
     fontWeight: 500,
     border: 'none',
-    boxShadow: '0 6px 18px rgba(255,255,255,0.2)',
+    boxShadow: '0 8px 18px rgba(10,10,20,0.35)',
     touchAction: 'none',
     transformStyle: 'preserve-3d',
     transformPerspective: 700,
     willChange: 'transform',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     textAlign: 'center',
+    whiteSpace: 'nowrap' as const,
+    lineHeight: 1,
   },
   dropZone: {
     width: '100%',
     minHeight: DROP_ZONE_HEIGHT,
     padding: '16px 18px',
-    boxSizing: 'border-box',
+   borderTop:  '2px solid rgba(255,255,255,0.12)',
     background: 'transparent',
     display: 'flex',
     flexDirection: 'column',
@@ -77,13 +130,11 @@ const styles: Record<string, CSSProperties> = {
     gap: 12,
     color: '#f5f7ff',
     zIndex: 1,
-    borderRadius: 18,
-    boxShadow: 'inset 0 0 28px rgba(255,255,255,0.12)',
+    
+    // boxShadow: 'inset 0 0 28px rgba(255,255,255,0.12)',
     transition: 'box-shadow 0.2s ease',
   },
-  dropZoneHover: {
-    boxShadow: '0 0 28px rgba(255,255,255,0.25), inset 0 0 28px rgba(255,255,255,0.2)',
-  },
+  
   dropZoneWords: {
     display: 'flex',
     flexWrap: 'wrap',
@@ -101,49 +152,215 @@ const styles: Record<string, CSSProperties> = {
     width: '100%',
     display: 'flex',
     flexDirection: 'column',
-    gap: 12,
+    gap: 10,
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   universeGrid: {
     width: '100%',
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-    gap: 12,
+    gap: 16,
+    justifyContent: 'center',
+    justifyItems: 'center',
   },
-  universeCard: {
+  universeCompactGrid: {
+    width: '100%',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+    gap: 8,
+  },
+  universeCompactButton: {
     borderRadius: 14,
-    border: '1px solid rgba(97,107,142,0.45)',
-    background: 'rgba(16,20,32,0.65)',
-    padding: '14px 16px',
+    border: '1px solid rgba(97,107,142,0.4)',
+    background: 'rgba(16,20,32,0.7)',
+    color: '#f5f7ff',
+    fontSize: 12,
+    letterSpacing: 0.25,
+    padding: '10px 12px',
+    minHeight: 56,
+    textAlign: 'left' as const,
     display: 'flex',
     flexDirection: 'column',
-    gap: 8,
+    gap: 4,
+    cursor: 'pointer',
+    transition: 'border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease',
+    outline: 'none',
+    width: '100%',
+    maxWidth: 150,
+    margin: '0 auto',
+  },
+  universeCompactActive: {
+    borderColor: '#61dafb',
+    boxShadow: '0 0 14px rgba(97,218,251,0.25)',
+    background: 'rgba(24,30,48,0.92)',
+  },
+  universeCompactGenre: {
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    opacity: 0.65,
+  },
+  universeCompactLabel: {
+    fontSize: 12,
+    fontWeight: 600,
+    lineHeight: 1.3,
+  },
+  universeCard: {
+    borderRadius: 20,
+    border: '1px solid rgba(97,107,142,0.45)',
+     borderStyle: 'transparent !important',
+    background: 'rgba(14,20,34,0.88)',
+    padding: 0,
+    minHeight: CARD_BASE_HEIGHT,
+    // Let the card grow to accommodate content so buttons remain visible
+    height: 'auto',
+    minWidth: 180,
+    maxWidth: 260,
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
     color: '#f5f7ff',
     cursor: 'pointer',
-    transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
+    overflow: 'hidden',
+    position: 'relative',
+    transformStyle: 'preserve-3d' as const,
+    boxShadow: '0 5px 5px rgba(97,218,251,0.18)',
+    perspective: 1200,
+    outline: 'none',
   },
   universeCardActive: {
     borderColor: '#61dafb',
-    boxShadow: '0 0 24px rgba(97,218,251,0.25)',
-    transform: 'translateY(-2px)',
+    boxShadow: '0 5px 18px rgba(97,218,251,0.18)',
   },
   universeBadge: {
-    fontSize: 11,
-    letterSpacing: 1.2,
+    fontSize: 11.5,
+    letterSpacing: 1.4,
     textTransform: 'uppercase',
-    opacity: 0.7,
+    opacity: 0.78,
   },
   universeTitle: {
-    margin: 0,
-    fontSize: 15,
+    margin: '0 0 6px 0',
+    fontSize: 16,
     fontWeight: 600,
   },
   universeDescription: {
     margin: 0,
-    fontSize: 13,
-    opacity: 0.76,
-    lineHeight: 1.4,
+    fontSize: 13.5,
+    opacity: 0.8,
+    lineHeight: 1.5,
+  },
+  universe3dWrapper: {
+    position: 'relative',
+    width: '100%',
+    // Ensure a consistent flipping area height so the back face is visible
+    height: `${CARD_EXPANDED_HEIGHT}px`,
+    overflow: 'hidden',
+    transformStyle: 'preserve-3d' as const,
+    borderRadius: 20,
+  },
+  universeFace: {
+    position: 'absolute' as const,
+    inset: 0,
+    backfaceVisibility: 'hidden' as const,
+    WebkitBackfaceVisibility: 'hidden' as any,
+    padding: '14px 14px 16px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    overflow: 'hidden',
+    borderRadius: 20,
+  },
+  universeFront: {
+    // Make the face opaque to avoid seeing mirrored recto through transparency
+    background: 'linear-gradient(155deg, rgb(24,30,58) 0%, rgb(9,12,24) 100%)',
+    justifyContent: 'flex-start',
+  },
+  universeFrontTop: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+  },
+  universeFrontImageFrame: {
+    position: 'relative',
+    width: '100%',
+    borderRadius: 18,
+    overflow: 'hidden',
+    border: '1px solid rgba(118,140,220,0.34)',
+    boxShadow: '0 20px 48px rgba(20,24,46,0.58)',
+    paddingTop: '85%',
+    cursor: 'zoom-in',
+  },
+  universeFrontImageAspect: {
+    position: 'absolute' as const,
+    inset: 0,
+    width: '100%',
+    height: '100%',
+  },
+  universeFrontImage: {
+    position: 'absolute' as const,
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover' as const,
+    filter: 'saturate(1.1)',
+  },
+  universeBack: {
+    transform: 'rotateY(180deg)',
+    // Match front face background while keeping opacity
+    background: 'linear-gradient(155deg, rgb(24,30,58) 0%, rgb(9,12,24) 100%)',
+    padding: '24px 24px 26px',
+    gap: 18,
+  },
+  universeBackImageFrame: {
+    position: 'relative',
+    width: '100%',
+    paddingTop: '90%',
+    borderRadius: 18,
+    overflow: 'hidden',
+    border: '1px solid rgba(118,140,220,0.34)',
+    boxShadow: '0 20px 48px rgba(20,24,46,0.58)',
+    cursor: 'zoom-in',
+  },
+  universeBackImageFrameSmall: {
+    position: 'relative',
+    width: '100%',
+    paddingTop: '56.25%',
+    borderRadius: 14,
+    overflow: 'hidden',
+    border: '1px solid rgba(255, 255, 255, 1)',
+    boxShadow: '0 16px 36px rgba(42,22,12,0.45)',
+  },
+  universeBackImage: {
+    position: 'absolute' as const,
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover' as const,
+  },
+  universeBackText: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    color: '#f5f7ff',
+  },
+  universeMoreBtn: {
+    marginTop: 16,
+    alignSelf: 'flex-start',
+    padding: '8px 16px',
+    borderRadius: 999,
+    border: '1px solid rgba(118,140,220,0.4)',
+    background: 'rgba(20,26,44,0.85)',
+    color: '#d2e2ff',
+    fontSize: 12,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    cursor: 'pointer',
+    transition: 'all 0.25s ease',
+    boxShadow: '0 10px 24px rgba(12,16,30,0.35)',
   },
 };
 
@@ -235,10 +452,19 @@ const Word = ({
     <motion.div
             ref={ref}
           layout
-      whileHover={{ scale: 1.08 }}
-      whileTap={{ scale: 0.96 }}
-      whileDrag={{ scale: 1.04, boxShadow: '0 14px 32px rgba(255,255,255,0.3)', zIndex: 12 }}
-      transition={{ type: 'spring', stiffness: 480, damping: 32 }}
+      whileHover={{
+        scale: 1.18,
+        y: -4,
+        boxShadow: '0 16px 34px rgba(26,32,56,0.55)',
+        background: 'radial-gradient(circle at 50% 40%, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.1) 55%, rgba(255,255,255,0) 100%)',
+      }}
+      whileTap={{ scale: 0.94 }}
+      whileDrag={{
+        scale: 1.04,
+        boxShadow: '0 16px 34px rgba(40,48,76,0.55)',
+        zIndex: 12,
+      }}
+      transition={{ type: 'spring', stiffness: 420, damping: 30 }}
       style={{
         ...styles.word,
         cursor: 'pointer',
@@ -261,10 +487,13 @@ export default function WordCloud({
   loading: boolean;
 }) {
   const [selectedUniverseId, setSelectedUniverseId] = useState<string | null>(null);
+  const [hoveredUniverseId, setHoveredUniverseId] = useState<string | null>(null);
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pointerActive, setPointerActive] = useState(false);
   const [isCompact, setIsCompact] = useState(false);
+  const [imagePreview, setImagePreview] = useState<PreviewImage>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const cloudLayerRef = useRef<HTMLDivElement>(null);
@@ -287,6 +516,24 @@ export default function WordCloud({
     }
   }, [isCompact]);
 
+  const hideImagePreview = useCallback(() => {
+    setImagePreview(null);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        hideImagePreview();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [hideImagePreview]);
+
+  const showImagePreview = useCallback((src: string, alt: string) => {
+    setImagePreview({ src, alt });
+  }, []);
+
   const selectedUniverse = useMemo<UniverseConfig | null>(
     () => (selectedUniverseId ? UNIVERSES.find((universe) => universe.id === selectedUniverseId) ?? null : null),
     [selectedUniverseId],
@@ -295,7 +542,19 @@ export default function WordCloud({
   useEffect(() => {
     setSelectedWords([]);
     setIsSubmitting(false);
+    setHoveredUniverseId(null);
   }, [selectedUniverseId]);
+
+  useEffect(() => {
+    if (selectedUniverse && isCompact) {
+      const scrollTarget = cloudLayerRef.current;
+      if (scrollTarget) {
+        requestAnimationFrame(() => {
+          scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
+    }
+  }, [selectedUniverse, isCompact]);
 
   const shuffledWords = useMemo(
     () =>
@@ -355,6 +614,7 @@ export default function WordCloud({
       height: 'calc(100dvh - 200px)',
       maxHeight: 'calc(100dvh - 200px)',
       width: '100%',
+      justifyContent: 'flex-start',
     } : {}),
   }), [isCompact]);
 
@@ -366,7 +626,10 @@ export default function WordCloud({
       paddingBottom: 16,
       overscrollBehavior: 'contain',
       WebkitOverflowScrolling: 'touch' as const,
-    } : {}),
+    } : {
+     
+      margin: '',
+    }),
   }), [isCompact]);
 
   const responsiveDropZone = useMemo(() => ({
@@ -374,56 +637,57 @@ export default function WordCloud({
     ...(isCompact ? {
       position: 'sticky' as const,
       bottom: 0,
-    } : {}),
+    } : {
+      maxWidth: 980,
+      margin: '0 auto',
+    }),
   }), [isCompact]);
 
   const instructionText = !selectedUniverse
-    ? 'Choisissez un univers pour afficher les mots.'
+    ? ''
     : isCompact
-      ? 'Touchez 6 mots ici'
-      : 'Sélectionnez 6 mots ici';
+      ? 'Touchez 6 mots'
+      : 'Sélectionnez 6 mots';
   const helperTextPrefix = isCompact ? 'Touchez' : 'Sélectionnez';
   const dropHover = !!selectedUniverse && selectedWords.length > 0 && selectedWords.length < MAX_SELECTION;
 
   return (
-    <AnimatePresence>
-      {!isSubmitting && (
-        <motion.div
-          style={styles.wrapper}
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-        >
+    <>
+      <AnimatePresence>
+        {!isSubmitting && (
+          <motion.div
+            style={styles.wrapper}
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
           <motion.div
             ref={containerRef}
-            style={{ ...responsiveContainer, overflow: 'hidden' }}
+            style={{ ...responsiveContainer, overflow: isCompact ? 'auto' : 'hidden' }}
             onPointerMove={handlePointerMove}
             onPointerEnter={handlePointerEnter}
             onPointerLeave={handlePointerLeave}
           >
-            <div style={styles.universesWrapper}>
-              <div style={{ fontWeight: 600, fontSize: 14, opacity: 0.85, color: '#f5f7ff' }}>
-                Choisissez un univers narratif
-              </div>
-              <div style={styles.universeGrid}>
-                {UNIVERSES.map((universe) => {
-                  const active = universe.id === selectedUniverseId;
-                  return (
-                    <button
-                      key={universe.id}
-                      type="button"
-                      onClick={() => setSelectedUniverseId(universe.id)}
-                      style={{ ...styles.universeCard, ...(active ? styles.universeCardActive : {}) }}
-                    >
-                      <span style={styles.universeBadge}>{universe.genre}</span>
-                      <span style={styles.universeTitle}>{universe.label}</span>
-                      <span style={styles.universeDescription}>{universe.description}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <UniverseSelection
+              styles={styles}
+              universes={UNIVERSES}
+              artMap={UNIVERSE_ART}
+              defaultArt={DEFAULT_ART}
+              isCompact={isCompact}
+              selectedUniverse={selectedUniverse}
+              selectedUniverseId={selectedUniverseId}
+              hoveredUniverseId={hoveredUniverseId}
+              activeCardId={activeCardId}
+              onSelectUniverse={setSelectedUniverseId}
+              onHoverStart={setHoveredUniverseId}
+              onHoverEnd={(id) => {
+                setHoveredUniverseId((prev) => (prev === id ? null : prev));
+                setActiveCardId((prev) => (prev === id ? null : prev));
+              }}
+              onSetActiveCard={setActiveCardId}
+              onRequestPreview={showImagePreview}
+            />
 
             {selectedUniverse ? (
               <div
@@ -449,18 +713,9 @@ export default function WordCloud({
                 ))}
               </div>
             ) : (
-              <div
-                style={{
-                  padding: '18px 16px',
-                  color: '#9da7c2',
-                  fontSize: 14,
-                  textAlign: 'center',
-                }}
-              >
-                Selectionnez un univers pour decouvrir la constellation de mots correspondante.
-              </div>
+              <></>
             )}
-
+ {selectedWords.length > 0 && (
             <div
               ref={dropZoneRef}
               style={{
@@ -468,11 +723,11 @@ export default function WordCloud({
                 ...(dropHover ? styles.dropZoneHover : {}),
               }}
             >
-              {selectedWords.length === 0 && (
+              {/* {selectedWords.length === 0 && (
                 <div style={{ fontWeight: 600, fontSize: 14, color: '#f5f7ff' }}>{instructionText}</div>
-              )}
+              )} */}
 
-              {selectedWords.length > 0 && (
+             
                 <div style={{ fontSize: 12, opacity: 0.85, color: '#f5f7ff' }}>
                   {selectedWords.length < MAX_SELECTION
                     ? `${helperTextPrefix} encore ${MAX_SELECTION - selectedWords.length} mot${
@@ -480,7 +735,7 @@ export default function WordCloud({
                       }.`
                     : 'Sélection complète.'}
                 </div>
-              )}
+             
               <div style={styles.dropZoneWords}>
                 {selectedWords.map((word) => (
                   <Word
@@ -497,26 +752,19 @@ export default function WordCloud({
                   />
                 ))}
               </div>
-            </div>
+            </div> )}
+            {selectedWords.length === MAX_SELECTION && (
+              <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <MagicButton onClick={handleSubmit} disabled={loading}>
+                  {loading ? 'Création...' : 'commencez.'}
+                </MagicButton>
+              </div>
+            )}
           </motion.div>
-
-          <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-            <AnimatePresence>
-              {selectedWords.length === MAX_SELECTION && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                >
-                  <MagicButton onClick={handleSubmit} disabled={loading}>
-                    {loading ? 'Création...' : 'commencez.'}
-                  </MagicButton>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
         </motion.div>
-      )}
-    </AnimatePresence>
+        )}
+      </AnimatePresence>
+      <ImagePreview image={imagePreview} onClose={hideImagePreview} />
+    </>
   );
 }

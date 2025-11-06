@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 
@@ -29,6 +29,17 @@ export default function MagicCursor() {
   const [coords, setCoords] = useState({ x: 0, y: 0 });
   const [state, setState] = useState<CursorState>({ variant: 'default', text: '' });
   const [visible, setVisible] = useState(false);
+  const rafRef = useRef<number | null>(null);
+  const pendingCoords = useRef(coords);
+
+  const scheduleCoordsUpdate = (x: number, y: number) => {
+    pendingCoords.current = { x, y };
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      setCoords(pendingCoords.current);
+      rafRef.current = null;
+    });
+  };
 
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
@@ -37,7 +48,7 @@ export default function MagicCursor() {
         return;
       }
       setVisible(true);
-      setCoords({ x: event.clientX, y: event.clientY });
+      scheduleCoordsUpdate(event.clientX, event.clientY);
     };
 
     const handlePointerLeave = () => setVisible(false);
@@ -48,6 +59,10 @@ export default function MagicCursor() {
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerleave', handlePointerLeave);
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
     };
   }, []);
 
@@ -72,7 +87,7 @@ export default function MagicCursor() {
 
   const variants: Variants = useMemo(() => {
     const defaultSize = 10;
-    const baseTransition = { type: 'spring', stiffness: 180, damping: 18, mass: 0.4 };
+    const baseTransition = { type: 'spring', stiffness: 260, damping: 22, mass: 0.35 };
     return {
       default: {
         opacity: visible ? 1 : 0,

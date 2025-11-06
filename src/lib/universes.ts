@@ -64,7 +64,7 @@ export const UNIVERSES: UniverseConfig[] = [
   {
     id: 'frontieres',
     label: 'Frontieres Stellaires',
-    description: 'Explorations, alliances et mysteres au coeur du vide cosmique.',
+    description: 'L’homme explore les étoiles, cherchant des réponses dans l’infini. Les machines rêvent, et les mondes s’illuminent d’avenir et de mystère...',
     genre: 'Science-fiction',
     ton: 'Intense',
     pov: 'tu',
@@ -73,7 +73,7 @@ export const UNIVERSES: UniverseConfig[] = [
   {
     id: 'arcanes',
     label: 'Mythes et Arcanes',
-    description: 'Magie ancienne, creatures legendaires et royaumes oublies.',
+    description: 'Dragons et magie s’affrontent sous un ciel d’orage. Les anciens pouvoirs se réveillent, façonnant le destin des royaumes oubliés...',
     genre: 'Fantasy',
     ton: 'Epique',
     pov: 'tu',
@@ -82,7 +82,7 @@ export const UNIVERSES: UniverseConfig[] = [
   {
     id: 'metropole',
     label: 'Enigmes Urbaines',
-    description: 'Rues neon, complots modernes et secrets des megapoles.',
+    description: 'La ville ne dort jamais. Sous la pluie, la vérité se cache entre les néons, prête à trahir celui qui la cherche...',
     genre: 'Thriller urbain',
     ton: 'Sombre',
     pov: 'tu',
@@ -91,7 +91,7 @@ export const UNIVERSES: UniverseConfig[] = [
   {
     id: 'heritages',
     label: 'Chroniques Historiques',
-    description: 'Empires, expéditions et intrigues politiques a travers les siecles.',
+    description: 'Le fracas du fer résonne. Les empires naissent et s’effondrent, mais les héros demeurent dans la poussière du temps...',
     genre: 'Historique',
     ton: 'Dramatique',
     pov: 'tu',

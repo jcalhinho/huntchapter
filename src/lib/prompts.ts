@@ -10,7 +10,7 @@ export function adventurePromptIntroStart(settings: Settings) {
 Write a French prologue that sets the tone (genre: ${settings.genre}, tone: ${settings.ton}, POV: ${settings.pov}) and transitions naturally into the first decision.
 
 Respond with JSON only:
-{ "narration": "French prologue in 2-4 sentences (<=120 words) ending right before the first choice." }
+{ "narration": "Prologue français en 4-6 phrases (150-220 mots) se terminant juste avant la première décision." }
 
 All narrative content must be in French, even though these instructions are in English.`;
 }
@@ -39,11 +39,11 @@ Upcoming scene index: ${upcomingScene} of ${TARGET_SCENES}
 Rules:
 - Produce French text only (narration, questions, options).
 - If scene ${upcomingScene} is a challenge scene (${challenges}), return JSON:
-  { "narration": "2-3 French sentences", "challenge": { "question": "French riddle based on previous clues", "choices": ["...", "...", "..."] }, "status": "ongoing" }
+  { "narration": "4-6 phrases en français (120-200 mots)", "challenge": { "question": "Énigme française basée sur les indices précédents", "choices": ["...", "...", "..."] }, "status": "ongoing" }
 - If scene ${upcomingScene} < ${FINAL_SCENE} and not a challenge, return JSON:
-  { "narration": "2-4 French sentences", "options": ["option 1", "option 2", "option 3"], "status": "ongoing" }
+  { "narration": "4-6 phrases françaises (120-200 mots)", "options": ["option 1", "option 2", "option 3"], "status": "ongoing" }
 - If scene ${upcomingScene} === ${FINAL_SCENE}, return JSON:
-  { "narration": "French resolution (2-4 sentences)", "endingTitle": "Short French title", "status": "win"|"loss" }
+  { "narration": "Résolution française en 4-6 phrases (150-230 mots)", "endingTitle": "Titre court en français", "status": "win"|"loss" }
 - Do not return options or a challenge in the ending.
 
 Return JSON strictly, no commentary.`;
