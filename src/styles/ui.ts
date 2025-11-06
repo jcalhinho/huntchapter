@@ -72,9 +72,14 @@ export const contentWrap: React.CSSProperties = {
   flex: 1,
   display: 'flex',
   flexDirection: 'column',
-  padding: '24px clamp(16px, 4vw, 48px) 40px',
+  justifyContent: 'center',
+  alignItems: 'stretch',
+  
   boxSizing: 'border-box',
   width: '100%',
+  height: '100%',
+  minHeight: '100dvh',
+  overflow: 'hidden',
 };
 
 export const btn: React.CSSProperties = { background: '#22293a', color: '#fff', border: 'none', borderRadius: 12, padding: '8px 12px', fontSize: 'clamp(12px, 2vw, 15px)' };

@@ -46,28 +46,47 @@ const styles: WordCloudStyles = {
     height: '100%',
     minHeight: '100%',
     flex: '1 1 auto',
-    padding: 'clamp(12px, 4vh, 36px) 0',
+   
+    margin: '0 auto',
   },
   heroLogo: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    marginBottom: 12,
+    marginBottom: 6,
   },
   heroLogoImage: {
-    width: 'clamp(240px, 75vw, 900px)',
+    width: 'clamp(220px, 50vw, 640px)',
     height: 'auto',
     filter: 'drop-shadow(0 25px 60px rgba(8,12,24,0.65))',
   },
+  universePrompt: {
+    fontWeight: 700,
+    fontSize: 'clamp(18px, 2vw, 26px)',
+    letterSpacing: 0.5,
+    opacity: 0.9,
+    color: '#f5f7ff',
+    marginBottom: 28,
+    textAlign: 'center' as const,
+  },
+  universeCompactPrompt: {
+    fontWeight: 700,
+    fontSize: 'clamp(18px, 2vw, 24px)',
+    letterSpacing: 0.3,
+    opacity: 0.88,
+    color: '#f5f7ff',
+    margin: '6px 0 16px',
+    textAlign: 'center' as const,
+  },
   container: {
     width: '100%',
-    maxWidth: 1400,
+    maxWidth: 1200,
     position: 'relative',
     border: 'none',
     background: 'transparent',
     borderRadius: 20,
-    padding: '0 clamp(16px, 4vw, 36px)',
+    padding: '0 clamp(12px, 3vw, 32px)',
     boxSizing: 'border-box',
     overflow: 'visible',
     display: 'flex',
@@ -130,6 +149,9 @@ const styles: WordCloudStyles = {
     gap: 12,
     color: '#f5f7ff',
     zIndex: 1,
+    maxWidth: 560,
+    alignSelf: 'center',
+    boxSizing: 'border-box' as const,
     
     // boxShadow: 'inset 0 0 28px rgba(255,255,255,0.12)',
     transition: 'box-shadow 0.2s ease',
@@ -155,6 +177,7 @@ const styles: WordCloudStyles = {
     gap: 10,
     alignItems: 'center',
     marginBottom: 8,
+    marginTop: 0,
   },
   universeGrid: {
     width: '100%',
@@ -167,8 +190,10 @@ const styles: WordCloudStyles = {
   universeCompactGrid: {
     width: '100%',
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-    gap: 8,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+    gap: 10,
+    padding: '8px 10px 12px',
+    marginBottom: 12,
   },
   universeCompactButton: {
     borderRadius: 14,
@@ -177,18 +202,17 @@ const styles: WordCloudStyles = {
     color: '#f5f7ff',
     fontSize: 12,
     letterSpacing: 0.25,
-    padding: '10px 12px',
-    minHeight: 56,
-    textAlign: 'left' as const,
+    padding: '8px 14px',
+    minHeight: 46,
+    textAlign: 'center' as const,
     display: 'flex',
     flexDirection: 'column',
-    gap: 4,
+    gap: 2,
     cursor: 'pointer',
     transition: 'border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease',
     outline: 'none',
     width: '100%',
-    maxWidth: 150,
-    margin: '0 auto',
+    overflow: 'hidden',
   },
   universeCompactActive: {
     borderColor: '#61dafb',
@@ -204,7 +228,8 @@ const styles: WordCloudStyles = {
   universeCompactLabel: {
     fontSize: 12,
     fontWeight: 600,
-    lineHeight: 1.3,
+    lineHeight: 1.25,
+    wordBreak: 'break-word' as const,
   },
   universeCard: {
     borderRadius: 20,
@@ -382,6 +407,7 @@ type WordProps = {
   mouseX: MotionValue<number>;
   mouseY: MotionValue<number>;
   pointerActive: boolean;
+  compact: boolean;
 };
 
 const Word = ({
@@ -394,6 +420,7 @@ const Word = ({
   mouseX,
   mouseY,
   pointerActive,
+  compact,
 }: WordProps) => {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -448,21 +475,25 @@ const Word = ({
     }
   };
 
+  const hoverScale = compact ? 1.06 : 1.18;
+  const hoverLift = compact ? -2 : -4;
+
   return (
     <motion.div
             ref={ref}
           layout
       whileHover={{
-        scale: 1.18,
-        y: -4,
-        boxShadow: '0 16px 34px rgba(26,32,56,0.55)',
-        background: 'radial-gradient(circle at 50% 40%, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.1) 55%, rgba(255,255,255,0) 100%)',
+        scale: hoverScale,
+        y: hoverLift,
+        boxShadow: compact ? '0 10px 20px rgba(18,22,38,0.45)' : '0 16px 34px rgba(26,32,56,0.55)',
+        background: 'radial-gradient(circle at 50% 40%, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.08) 55%, rgba(255,255,255,0) 100%)',
       }}
-      whileTap={{ scale: 0.94 }}
+      whileTap={{ scale: compact ? 0.96 : 0.94 }}
       whileDrag={{
         scale: 1.04,
         boxShadow: '0 16px 34px rgba(40,48,76,0.55)',
         zIndex: 12,
+        overflow: 'hidden',
       }}
       transition={{ type: 'spring', stiffness: 420, damping: 30 }}
       style={{
@@ -626,6 +657,8 @@ export default function WordCloud({
       paddingBottom: 16,
       overscrollBehavior: 'contain',
       WebkitOverflowScrolling: 'touch' as const,
+      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+      gap: 10,
     } : {
      
       margin: '',
@@ -709,6 +742,7 @@ export default function WordCloud({
                     mouseX={mouseX}
                     mouseY={mouseY}
                     pointerActive={pointerActive}
+                    compact={isCompact}
                   />
                 ))}
               </div>
@@ -749,6 +783,7 @@ export default function WordCloud({
                     mouseX={mouseX}
                     mouseY={mouseY}
                     pointerActive={pointerActive}
+                    compact={isCompact}
                   />
                 ))}
               </div>

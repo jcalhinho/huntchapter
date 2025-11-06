@@ -1,5 +1,5 @@
 
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { Transition, Variants } from 'framer-motion';
 import LoadingGlyph from './components/LoadingGlyph';
@@ -69,6 +69,14 @@ export default function App() {
 
   const activeScene = history[activeSceneIndex];
   const [scenePreview, setScenePreview] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const update = () => setIsMobile(window.innerWidth <= 768);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
   const engineLabel = mode === 'local' ? 'Gemini Nano (local)' : mode === 'remote' ? 'Gemini Cloud' : 'Moteur inactif';
   const engineColor = mode === 'local' ? '#4ade80' : mode === 'remote' ? '#60a5fa' : '#94a3b8';
   const engineStatus = loading ? 'Génération en cours...' : engineLabel;
@@ -252,9 +260,21 @@ export default function App() {
     >
         <div style={rightPane}>
           <div style={topbar}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              type="button"
+              onClick={reset}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+              }}
+            >
               <img src="/logo.webp" alt="HuntChapter" style={{ height: 64, width: 'auto', display: 'block' }} />
-            </div>
+            </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               {started && (
                 <button
@@ -271,7 +291,24 @@ export default function App() {
         <div style={{ position: 'relative',  flex: 1, display: 'grid', placeItems: 'center' }}>
           <AnimatePresence mode="wait">
             {!started ? (
-              <motion.div key="intro" variants={cardVariants} initial="initial" animate="animate" exit="exit" transition={cardTransition} style={{ ...card, width: '100%', height: '100%', maxWidth: '75vw', transformPerspective: 1000 }}>
+              <motion.div
+                key="intro"
+                variants={cardVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={cardTransition}
+                style={{
+                  ...card,
+                  width: '100%',
+                  height: '100%',
+                  maxWidth: '100%',
+                  transformPerspective: 1000,
+                  margin: '0 auto',
+                 
+                  boxSizing: 'border-box',
+                }}
+              >
                 <WordCloud onSubmit={handleStartGame} loading={loading} />
                 {error && <p style={{ color: '#ffb3b3', textAlign: 'center' }}>⚠️ {error}</p>}
               </motion.div>
@@ -396,10 +433,12 @@ export default function App() {
         </motion.div>
       )}
     </AnimatePresence>
-      <div style={{ ...engineBadge, opacity: started ? 1 : 0.8 }}>
-        <span style={{ ...engineBadgeDot, color: engineColor, backgroundColor: engineColor }} />
-        <span>{engineStatus}</span>
-      </div>
+      {!isMobile && (
+        <div style={{ ...engineBadge, opacity: started ? 1 : 0.8 }}>
+          <span style={{ ...engineBadgeDot, color: engineColor, backgroundColor: engineColor }} />
+          <span>{engineStatus}</span>
+        </div>
+      )}
     </>
   );
 }

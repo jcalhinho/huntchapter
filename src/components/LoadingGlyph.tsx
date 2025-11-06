@@ -19,8 +19,6 @@ export default function LoadingGlyph() {
     const draw = () => {
       const w = c.width / DPR, h = c.height / DPR;
       ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = '#0b0e14';
-      ctx.fillRect(0, 0, w, h);
       const cx = w / 2, cy = h / 2;
       const N = 28;
       for (let i = 0; i < N; i++) {
@@ -45,8 +43,8 @@ export default function LoadingGlyph() {
   }, []);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: 220, borderRadius: 12, overflow: 'hidden', border: '1px solid #1c2230', background: '#0b0e14', marginBottom: 12 }}>
-      <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block', willChange: 'transform' }} />
+    <div style={{ position: 'relative', width: '100%', height: 220, borderRadius: 12, overflow: 'hidden', background: 'transparent', marginBottom: 12 }}>
+      <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block', willChange: 'transform',  background: 'transparent' }} />
     </div>
   );
 }

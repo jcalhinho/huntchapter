@@ -54,10 +54,6 @@ export default function UniverseSelection({
           </motion.div>
         )}
       </AnimatePresence>
-      <div style={{ fontWeight: 700, fontSize: 'clamp(18px, 2vw, 26px)', letterSpacing: 0.5, opacity: 0.9, color: '#f5f7ff', marginBottom: 28 }}>
-        Choisissez un univers narratif
-      </div>
-
       {isCompact ? (
         <>
           <div style={styles.universeCompactGrid}>
@@ -73,21 +69,18 @@ export default function UniverseSelection({
                     ...(active ? styles.universeCompactActive : {}),
                   }}
                 >
-                  <span style={styles.universeCompactGenre}>{universe.genre}</span>
                   <span style={styles.universeCompactLabel}>{universe.label}</span>
                 </button>
               );
             })}
           </div>
-          {selectedUniverse && (
-            <div style={{ fontSize: 12, opacity: 0.78, color: '#d0d7f2', textAlign: 'center', marginTop: 6 }}>
-              {selectedUniverse.description}
-            </div>
-          )}
+          <div style={styles.universeCompactPrompt}>Choisissez un univers narratif</div>
         </>
       ) : (
-        <div style={styles.universeGrid}>
-          {universes.map((universe) => {
+        <>
+          <div style={styles.universePrompt}>Choisissez un univers narratif</div>
+          <div style={styles.universeGrid}>
+            {universes.map((universe) => {
             const active = universe.id === selectedUniverseId;
             const hovered = hoveredUniverseId === universe.id;
             const flipped = activeCardId === universe.id;
@@ -257,7 +250,8 @@ export default function UniverseSelection({
               </motion.div>
             );
           })}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
