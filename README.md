@@ -1,4 +1,4 @@
-# Story Weaver
+# Huntchapter
 
 Ce projet est un générateur d'histoires interactives alimenté par l'IA de Google Gemini.
 
